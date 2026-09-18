@@ -7,7 +7,7 @@
         public string Title { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime ModifiedAt { get; set; } = DateTime.Now;
-        public MindMapNode? RootNode { get; set; }
+        public List<MindMapNode> Nodes { get; set; } = new();
         #endregion
     }
 }

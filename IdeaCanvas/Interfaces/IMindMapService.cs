@@ -4,10 +4,11 @@ namespace IdeaCanvas.Interfaces
 {
     interface IMindMapService
     {
-        public MindMapNode AddNode(MindMap map, Guid parentId, string text);
-        public void RemoveNode(MindMap map, Guid nodeId);
-        public void MoveNode(MindMap map, Guid nodeId, Guid newParentId, int newIndex);
-        public void ReorderSibling(MindMapNode parent, Guid nodeId, int newIndex);
-        public void UpdateText(MindMapNode node, string text);
+        public MindMapNode AddNode(MindMap map, Guid? parentId, string text);
+        public bool RemoveNode(MindMap map, Guid nodeId);
+        public bool MoveNode(MindMap map, Guid nodeId, Guid newParentId, int newSortOrder);
+        public void ReorderSiblings(MindMap map, Guid? parentId, IEnumerable<Guid> orderedNodeIds);
+        public void UpdateText(MindMap map, Guid nodeId, string text);
+        public void UpdateDescription(MindMap map, Guid nodeId, string description);
     }
 }
