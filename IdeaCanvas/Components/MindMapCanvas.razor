@@ -1,0 +1,244 @@
+﻿@using IdeaCanvas.Enums
+@using IdeaCanvas.Interfaces
+@using IdeaCanvas.Models
+@inject IMindMapLayoutService LayoutService
+
+
+<div class="mindmap-canvas">
+    <div class="mindmap-viewport">
+
+        <svg class="mindmap-connections">
+
+            @foreach (var connection in GetConnections(MindMap.RootNode))
+            {
+                if (nodeLayouts.TryGetValue(connection.Parent.Id, out NodeLayout? parentLayout) &&
+                    nodeLayouts.TryGetValue(connection.Child.Id, out NodeLayout? childLayout))
+                {
+                    <line x1="@parentLayout.X"
+                          y1="@parentLayout.Y"
+                          x2="@childLayout.X"
+                          y2="@childLayout.Y"
+                          stroke="#555"
+                          stroke-width="2" />
+                }
+            }
+
+        </svg>
+        @if (MindMap.RootNode != null)
+        {
+            @foreach (MindMapNode node in GetAllNodes(MindMap.RootNode))
+            {
+                if (nodeLayouts.TryGetValue(node.Id, out NodeLayout? layout))
+                {
+                    <div class="positioned-node"
+                         style="left: @(layout.X)px;
+                        top: @(layout.Y)px;">
+                        <MindMapNodeView Node="@node" />
+                    </div>
+                }
+            }
+        }
+    </div>
+
+</div>
+
+@code {
+    private MindMap MindMap { get; set; } = new MindMap
+    {
+        Title = "IT-Infrastruktur",
+
+        RootNode = new MindMapNode
+        {
+            Text = "IT-Infrastruktur",
+
+            Children =
+        {
+            // LINKS
+            new MindMapNode
+            {
+                Text = "Hardware",
+                BranchSide = MindMapBranchSide.Left,
+                Children =
+                {
+                    new MindMapNode { Text = "CPU" },
+                    new MindMapNode { Text = "GPU" },
+                    new MindMapNode { Text = "RAM" },
+                    new MindMapNode
+                    {
+                        Text = "Speicher",
+                        Children =
+                        {
+                            new MindMapNode { Text = "SSD" },
+                            new MindMapNode { Text = "HDD" },
+                            new MindMapNode { Text = "NVMe" }
+                        }
+                    }
+                }
+            },
+
+            new MindMapNode
+            {
+                Text = "Netzwerk",
+                BranchSide = MindMapBranchSide.Left,
+                Children =
+                {
+                    new MindMapNode { Text = "Router" },
+                    new MindMapNode
+                    {
+                        Text = "Switch",
+                        Children =
+                        {
+                            new MindMapNode { Text = "Managed" },
+                            new MindMapNode { Text = "Unmanaged" },
+                            new MindMapNode { Text = "PoE" }
+                        }
+                    },
+                    new MindMapNode
+                    {
+                        Text = "WLAN",
+                        Children =
+                        {
+                            new MindMapNode { Text = "Access Point" },
+                            new MindMapNode { Text = "Mesh" }
+                        }
+                    }
+                }
+            },
+
+            new MindMapNode
+            {
+                Text = "Entwicklung",
+                BranchSide = MindMapBranchSide.Left,
+                Children =
+                {
+                    new MindMapNode { Text = "C#" },
+                    new MindMapNode { Text = "Python" },
+                    new MindMapNode { Text = "Git" },
+                    new MindMapNode { Text = "Visual Studio" }
+                }
+            },
+
+            new MindMapNode
+            {
+                Text = "Sicherheit",
+                BranchSide = MindMapBranchSide.Left,
+                Children =
+                {
+                    new MindMapNode { Text = "Firewall" },
+                    new MindMapNode { Text = "VPN" },
+                    new MindMapNode { Text = "Antivirus" }
+                }
+            },
+
+            // RECHTS
+            new MindMapNode
+            {
+                Text = "Betriebssysteme",
+                BranchSide = MindMapBranchSide.Right,
+                Children =
+                {
+                    new MindMapNode { Text = "Windows" },
+                    new MindMapNode
+                    {
+                        Text = "Linux",
+                        Children =
+                        {
+                            new MindMapNode { Text = "Ubuntu" },
+                            new MindMapNode { Text = "Arch Linux" },
+                            new MindMapNode { Text = "Debian" }
+                        }
+                    },
+                    new MindMapNode { Text = "macOS" }
+                }
+            },
+
+            new MindMapNode
+            {
+                Text = "Server",
+                BranchSide = MindMapBranchSide.Right,
+                Children =
+                {
+                    new MindMapNode { Text = "IIS" },
+                    new MindMapNode
+                    {
+                        Text = "Docker",
+                        Children =
+                        {
+                            new MindMapNode { Text = "Container" },
+                            new MindMapNode { Text = "Images" },
+                            new MindMapNode { Text = "Volumes" }
+                        }
+                    },
+                    new MindMapNode { Text = "Hyper-V" }
+                }
+            },
+
+            new MindMapNode
+            {
+                Text = "Daten",
+                BranchSide = MindMapBranchSide.Right,
+                Children =
+                {
+                    new MindMapNode { Text = "SQL Server" },
+                    new MindMapNode { Text = "PostgreSQL" },
+                    new MindMapNode
+                    {
+                        Text = "Backup",
+                        Children =
+                        {
+                            new MindMapNode { Text = "Lokal" },
+                            new MindMapNode { Text = "Cloud" }
+                        }
+                    }
+                }
+            },
+
+            new MindMapNode
+            {
+                Text = "Peripherie",
+                BranchSide = MindMapBranchSide.Right,
+                Children =
+                {
+                    new MindMapNode { Text = "Monitor" },
+                    new MindMapNode { Text = "Tastatur" },
+                    new MindMapNode { Text = "Maus" },
+                    new MindMapNode { Text = "Drucker" }
+                }
+            }
+        }
+        }
+    };
+
+    private IEnumerable<MindMapNode> GetAllNodes(MindMapNode node)
+    {
+        yield return node;
+
+        foreach (MindMapNode child in node.Children)
+        {
+            foreach (MindMapNode descendant in GetAllNodes(child))
+            {
+                yield return descendant;
+            }
+        }
+    }
+
+    private IReadOnlyDictionary<Guid, NodeLayout> nodeLayouts =
+        new Dictionary<Guid, NodeLayout>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        nodeLayouts = await LayoutService.CalculateLayoutAsync(MindMap);
+    }
+
+    private List<(MindMapNode Parent, MindMapNode Child)> GetConnections(MindMapNode node)
+    {
+        List<(MindMapNode, MindMapNode)> connectionList = new();
+
+        foreach (MindMapNode child in node.Children)
+        {
+            connectionList.Add((node, child));
+            connectionList.AddRange(GetConnections(child));
+        }
+        return connectionList;
+    }
+}

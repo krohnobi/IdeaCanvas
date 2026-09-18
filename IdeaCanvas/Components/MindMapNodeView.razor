@@ -1,0 +1,10 @@
+﻿@using IdeaCanvas.Models
+
+<div class="mindmap-node">
+    @Node.Text
+</div>
+
+@code {
+    [Parameter]
+    public MindMapNode Node { get; set; } = null!;
+}

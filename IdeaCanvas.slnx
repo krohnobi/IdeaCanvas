@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="IdeaCanvas/IdeaCanvas.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
+</Solution>
