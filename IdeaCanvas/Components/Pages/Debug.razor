@@ -1,0 +1,187 @@
+﻿@page "/debug"
+
+@using System.Globalization
+@using IdeaCanvas.DTOs
+@using IdeaCanvas.Interfaces
+@using IdeaCanvas.Models
+
+@* @using Microsoft.JSInterop *@
+
+<h1>Debug funktioniert</h1>
+@inject IJSRuntime JS
+@inject IMindMapService MindMapService
+@inject ILayoutService LayoutService
+@inject IMindMapStorageService StorageService
+
+<button @onclick=CreateTestMap>Create Test Map</button>
+
+@if (currentMap != null)
+{
+    <label>
+        Curve Strength: @curveStrength
+        <input type="range" min="0" max="1" step="0.1"
+               value="@curveStrength"
+               @oninput="OnCurveStrengthChanged" />
+    </label>
+    <button @onclick=ApplyLayout>Apply Layout</button>
+
+    
+    <svg width="1000"
+         height="600"
+         style="border: 1px solid #888;">
+
+        <g transform="translate(500, 300)">
+            @foreach (var node in currentMap.Nodes)
+            {
+                <rect x="@((node.Layout.X - node.Layout.Width/2).ToString(CultureInfo.InvariantCulture))"
+                      y="@((node.Layout.Y - node.Layout.Height/2).ToString(CultureInfo.InvariantCulture))"
+                      width="@node.Layout.Width.ToString(CultureInfo.InvariantCulture)"
+                      height="@node.Layout.Height.ToString(CultureInfo.InvariantCulture)"
+                      fill="white"
+                      stroke="black" />
+
+                <foreignObject x="@((node.Layout.X - node.Layout.Width / 2).ToString(CultureInfo.InvariantCulture))"
+                               y="@((node.Layout.Y - node.Layout.Height / 2).ToString(CultureInfo.InvariantCulture))"
+                               width="@node.Layout.Width.ToString(CultureInfo.InvariantCulture)"
+                               height="@node.Layout.Height.ToString(CultureInfo.InvariantCulture)">
+                    <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+                        @node.Text
+                    </div>
+                </foreignObject>
+
+                
+            }
+
+            @foreach (var edge in currentMap.Edges)
+            {
+                var pointsAttr = string.Join(" ", edge.Points.Select(p =>
+                    $"{p.X.ToString(CultureInfo.InvariantCulture)},{p.Y.ToString(CultureInfo.InvariantCulture)}"));
+
+                <polyline points="@pointsAttr" stroke="black" fill="none" />
+            }
+
+        </g>
+
+    </svg>
+
+
+
+    <table>
+        <thead>
+            <tr>
+                <th>Text</th>
+                <th>Id</th>
+                <th>ParentId</th>
+                <th>X</th>
+                <th>Y</th>
+                <th>Width</th>
+                <th>Height</th>
+                <th>Pinned</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var node in currentMap.Nodes)
+            {
+                <tr>
+                    <td>@node.Text</td>
+                    <td>@node.Id</td>
+                    <td>@node.ParentId</td>
+                    <td>@node.Layout.X</td>
+                    <td>@node.Layout.Y</td>
+                    <td>@node.Layout.Width</td>
+                    <td>@node.Layout.Height</td>
+                    <td>@node.Layout.IsPinned</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <button @onclick=SaveMap>Save Map</button>
+
+}
+<button @onclick=EmptyMap>Empty Map</button>
+<button @onclick=LoadMap>Load Map</button>
+
+
+
+@code {
+
+    private MindMap? currentMap;
+    private double curveStrength = 0;
+
+
+    private string TestPath =>
+    Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+        "Downloads",
+        "debug-mindmap.json");
+
+    private void CreateTestMap()
+    {
+        currentMap = StorageService.CreateMap("Test Map");
+        var rootNode = MindMapService.AddNode(currentMap, null, "Root Node");
+
+        var firstRootChild = MindMapService.AddNode(currentMap, rootNode.Id, "First RootChild");
+        var secondsRootChild = MindMapService.AddNode(currentMap, rootNode.Id, "Second RootChild");
+
+
+        MindMapService.AddNode(currentMap, firstRootChild.Id, "First Root Child Child");
+        MindMapService.AddNode(currentMap, firstRootChild.Id, "First Root Child Second Child");
+
+    }
+
+    private async Task ApplyLayout()
+    {
+        if (currentMap == null)
+        {
+            return;
+        }
+        foreach (var node in currentMap.Nodes)
+        {
+            await MeasureNode(node);
+        }
+
+        LayoutService.ApplyLayout(currentMap,curveStrength);
+
+    }
+
+    private async Task SaveMap()
+    {
+        if (currentMap == null)
+            throw new InvalidOperationException("No map to save.");
+
+        await StorageService.SaveAsync(currentMap, TestPath);
+    }
+
+    private void EmptyMap()
+    {
+        currentMap = null;
+    }
+
+    private async Task LoadMap()
+    {
+        currentMap = await StorageService.LoadAsync(TestPath);
+    }
+
+
+    private async Task MeasureNode(MindMapNode node)
+    {
+        var size = await JS.InvokeAsync<TextSize>(
+            "ideaCanvas.measureText",
+            node.Text);
+
+        node.Layout.Width = size.Width+30;
+        node.Layout.Height = size.Height+20;
+    }
+
+
+
+    private async Task OnCurveStrengthChanged(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double curveStrengthValue))
+        {
+            curveStrength = curveStrengthValue;
+            await ApplyLayout(); // deine bestehende Methode, macht Text-Messung + Layout
+        }
+    }
+}

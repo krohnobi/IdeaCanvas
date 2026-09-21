@@ -1,0 +1,8 @@
+﻿namespace IdeaCanvas.DTOs
+{
+    public class TextSize
+    {
+        public double Width { get; set; }
+        public double Height { get; set; }
+    }
+}

@@ -8,6 +8,7 @@
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime ModifiedAt { get; set; } = DateTime.Now;
         public List<MindMapNode> Nodes { get; set; } = new();
+        public List<EdgeLayout> Edges { get; set; } = new();
         #endregion
     }
 }

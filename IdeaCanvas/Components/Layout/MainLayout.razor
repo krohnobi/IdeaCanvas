@@ -1,5 +1,51 @@
-﻿@inherits LayoutComponentBase
+﻿@using System.Reflection
+@using Microsoft.AspNetCore.Components.Routing
+
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
 
 <div class="test-layout">
+    <select @onchange="Navigate">
+        @foreach (var route in routes)
+        {
+            <option value="@route.Path">@route.Name</option>
+        }
+
+    </select>
+
     @Body
 </div>
+
+
+@code {
+    private record AppRoute(string Name, string Path);
+    private List<AppRoute> routes = new();
+
+    protected override void OnInitialized()
+    {
+        var types = typeof(MainLayout).Assembly.GetTypes();
+
+        foreach (var type in types.Where(t => t.Name != "NotFound"))
+        {
+            var routeAttributes = type.GetCustomAttributes<RouteAttribute>();
+            foreach (var routeAttribute in routeAttributes)
+            {
+                routes.Add(new AppRoute(
+                    type.Name,
+                    routeAttribute.Template
+                ));
+            }
+        }
+    }
+
+    private void Navigate(ChangeEventArgs e)
+    {
+        var path = e.Value?.ToString();
+
+        if (!string.IsNullOrEmpty(path))
+        {
+            Navigation.NavigateTo(path);
+        }
+    }
+
+}

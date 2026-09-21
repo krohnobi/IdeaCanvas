@@ -17,7 +17,12 @@ namespace IdeaCanvas
                 });
 
             builder.Services.AddMauiBlazorWebView();
-            builder.Services.AddSingleton<IMindMapLayoutService, MindMapLayoutService>();
+
+            #region Load Services
+            builder.Services.AddSingleton<IMindMapService, MindMapService>();
+            builder.Services.AddSingleton<ILayoutService, LayoutService>();
+            builder.Services.AddSingleton<IMindMapStorageService, MindMapStorageService>();
+            #endregion
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();

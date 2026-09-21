@@ -7,7 +7,7 @@ namespace IdeaCanvas.Services
 {
     internal class MindMapStorageService : IMindMapStorageService
     {
-        public MindMap CreateNap(string title)
+        public MindMap CreateMap(string title)
         {
             return new MindMap { Title = title };
         }
