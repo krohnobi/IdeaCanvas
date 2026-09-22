@@ -1,11 +1,10 @@
-﻿@page "/debug"
+﻿@page "/Debug"
 
 @using System.Globalization
 @using IdeaCanvas.DTOs
 @using IdeaCanvas.Interfaces
 @using IdeaCanvas.Models
-
-@* @using Microsoft.JSInterop *@
+@using Microsoft.AspNetCore.Components.Web
 
 <h1>Debug funktioniert</h1>
 @inject IJSRuntime JS
@@ -25,39 +24,112 @@
     </label>
     <button @onclick=ApplyLayout>Apply Layout</button>
 
-    
-    <svg width="1000"
+
+    #region Context Menu
+
+    @if (contextMenuVisible && contextMenuNode != null)
+    {
+        // close context menu on click
+        <div @onclick="CloseContextMenu" @oncontextmenu="CloseContextMenu"
+             style="position: fixed; inset: 0; z-index: 999;"></div>
+
+        <div style="position: fixed; left: @(contextMenuX)px; top: @(contextMenuY)px;
+            background: white; border: 1px solid #ccc; box-shadow: 0 2px 6px rgba(0,0,0,0.2); z-index: 1000;">
+            <div @onclick="AddChildToContextNode">Kind hinzufügen</div>
+            <div @onclick="() => StartEdit(EditField.Text)">Text Bearbeiten</div>
+            <div @onclick="() => StartEdit(EditField.Description)">Beschreibung bearbeiten</div>
+            @if (contextMenuNode.ParentId != null)
+            {
+                <div @onclick="DeleteContextNode">Löschen</div>
+            }
+            @if (contextMenuNode.Layout.IsPinned)
+            {
+                <div @onclick="UnpinContextNode">Position lösen</div>
+            }
+        </div>
+    }
+    #endregion
+
+    <svg viewBox="@($"{viewBoxX.ToString(CultureInfo.InvariantCulture)} {viewBoxY.ToString(CultureInfo.InvariantCulture)} {viewBoxWidth.ToString(CultureInfo.InvariantCulture)} {viewBoxHeight.ToString(CultureInfo.InvariantCulture)}")"
+         @onwheel="OnSvgWheel" @onwheel:preventDefault="true"
+         @onmousemove="OnSvgMouseMove" @onmouseup="OnSvgMouseUp"
+         @onmousedown="OnSvgMouseDown"
+         width="1000"
          height="600"
          style="border: 1px solid #888;">
 
         <g transform="translate(500, 300)">
             @foreach (var node in currentMap.Nodes)
             {
-                <rect x="@((node.Layout.X - node.Layout.Width/2).ToString(CultureInfo.InvariantCulture))"
-                      y="@((node.Layout.Y - node.Layout.Height/2).ToString(CultureInfo.InvariantCulture))"
+                <rect @oncontextmenu="(MouseEventArgs e) => OnNodeRightClick(e, node)"
+                      @oncontextmenu:preventDefault="true"
+                      @onmousedown="(e) => OnNodeMouseDown(e, node)"
+                      @onmousedown:stopPropagation="true"
+                      x="@((node.Layout.X - node.Layout.Width / 2).ToString(CultureInfo.InvariantCulture))"
+                      y="@((node.Layout.Y - node.Layout.Height / 2).ToString(CultureInfo.InvariantCulture))"
                       width="@node.Layout.Width.ToString(CultureInfo.InvariantCulture)"
                       height="@node.Layout.Height.ToString(CultureInfo.InvariantCulture)"
                       fill="white"
-                      stroke="black" />
+                      stroke="black">
 
-                <foreignObject x="@((node.Layout.X - node.Layout.Width / 2).ToString(CultureInfo.InvariantCulture))"
+                    @if (!string.IsNullOrWhiteSpace(node.Description))
+                    {
+                        <title>@node.Description</title>
+                    }
+                </rect>
+
+                <foreignObject style="@(editingNodeId == node.Id ? "" : "pointer-events: none;")"
+                               x="@((node.Layout.X - node.Layout.Width / 2).ToString(CultureInfo.InvariantCulture))"
                                y="@((node.Layout.Y - node.Layout.Height / 2).ToString(CultureInfo.InvariantCulture))"
                                width="@node.Layout.Width.ToString(CultureInfo.InvariantCulture)"
                                height="@node.Layout.Height.ToString(CultureInfo.InvariantCulture)">
-                    <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
-                        @node.Text
-                    </div>
+                    @if (editingNodeId == node.Id && editingField == EditField.Text)
+                    {
+                        <input value="@node.Text" @onchange="(e) => SaveEdit(node, e)"
+                               style="width:100%; height:100%;" />
+                    }
+                    else if (editingNodeId == node.Id && editingField == EditField.Description)
+                    {
+                        <input value="@node.Description" @onchange="(e) => SaveEdit(node, e)"
+                               style="width:100%; height:100%;" />
+                    }
+                    else
+                    {
+                        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; pointer-events: none;">
+                            @node.Text
+                        </div>
+                    }
+
                 </foreignObject>
 
                 
             }
 
+            
             @foreach (var edge in currentMap.Edges)
             {
-                var pointsAttr = string.Join(" ", edge.Points.Select(p =>
-                    $"{p.X.ToString(CultureInfo.InvariantCulture)},{p.Y.ToString(CultureInfo.InvariantCulture)}"));
+                if (draggingNodeId != null)
+                {
+                    var source = currentMap.Nodes.FirstOrDefault(n => n.Id == edge.SourceNodeId);
+                    var target = currentMap.Nodes.FirstOrDefault(n => n.Id == edge.TargetNodeId);
+                    if (source != null && target != null)
+                    {
+                        var start = GetBoundaryPoint(source, target.Layout.X, target.Layout.Y);
+                        var end = GetBoundaryPoint(target, source.Layout.X, source.Layout.Y);
 
-                <polyline points="@pointsAttr" stroke="black" fill="none" />
+                        <line x1="@start.X.ToString(CultureInfo.InvariantCulture)"
+                              y1="@start.Y.ToString(CultureInfo.InvariantCulture)"
+                              x2="@end.X.ToString(CultureInfo.InvariantCulture)"
+                              y2="@end.Y.ToString(CultureInfo.InvariantCulture)"
+                              stroke="black" />
+                    }
+                }
+                else
+                {
+                    var pointsAttr = string.Join(" ", edge.Points.Select(p =>
+                        $"{p.X.ToString(CultureInfo.InvariantCulture)},{p.Y.ToString(CultureInfo.InvariantCulture)}"));
+                    <polyline points="@pointsAttr" stroke="black" fill="none" />
+                }
             }
 
         </g>
@@ -70,6 +142,7 @@
         <thead>
             <tr>
                 <th>Text</th>
+                <th>Description</th>
                 <th>Id</th>
                 <th>ParentId</th>
                 <th>X</th>
@@ -84,6 +157,7 @@
             {
                 <tr>
                     <td>@node.Text</td>
+                    <td>@node.Description</td>
                     <td>@node.Id</td>
                     <td>@node.ParentId</td>
                     <td>@node.Layout.X</td>
@@ -108,6 +182,7 @@
 
     private MindMap? currentMap;
     private double curveStrength = 0;
+
 
 
     private string TestPath =>
@@ -141,7 +216,7 @@
             await MeasureNode(node);
         }
 
-        LayoutService.ApplyLayout(currentMap,curveStrength);
+        LayoutService.ApplyLayout(currentMap, curveStrength);
 
     }
 
@@ -170,8 +245,8 @@
             "ideaCanvas.measureText",
             node.Text);
 
-        node.Layout.Width = size.Width+30;
-        node.Layout.Height = size.Height+20;
+        node.Layout.Width = size.Width + 30;
+        node.Layout.Height = size.Height + 20;
     }
 
 
@@ -184,4 +259,212 @@
             await ApplyLayout(); // deine bestehende Methode, macht Text-Messung + Layout
         }
     }
+
+
+    #region Context Menu
+
+    private enum EditField { None, Text, Description }
+
+    private bool contextMenuVisible = false;
+    private double contextMenuX, contextMenuY;
+    private MindMapNode? contextMenuNode;
+    private Guid? editingNodeId;
+    private EditField editingField = EditField.None;
+
+
+    private void OnNodeRightClick(MouseEventArgs e, MindMapNode node)
+    {
+        contextMenuNode = node;
+        contextMenuVisible = true;
+        contextMenuX = e.ClientX;
+        contextMenuY = e.ClientY;
+
+    }
+
+    private void CloseContextMenu()
+    {
+        contextMenuVisible = false;
+        contextMenuNode = null;
+    }
+
+    private void StartEdit(EditField field)
+    {
+        if (contextMenuNode == null) return;
+        editingNodeId = contextMenuNode.Id;
+        editingField = field;
+
+        CloseContextMenu();
+    }
+
+    private async Task SaveEdit(MindMapNode node, ChangeEventArgs e)
+    {
+        if (currentMap == null) return;
+
+        var value = e.Value?.ToString() ?? "";
+
+        if (editingField == EditField.Description)
+        {
+            MindMapService.UpdateDescription(currentMap, node.Id, value);
+        }
+        else if (editingField == EditField.Text)
+        {
+            MindMapService.UpdateText(currentMap, node.Id, value);
+        }
+
+        editingField = EditField.None;
+        editingNodeId = null;
+        await ApplyLayout();
+    }
+
+    private async Task AddChildToContextNode()
+    {
+        if (contextMenuNode == null || currentMap == null)
+            return;
+
+        MindMapService.AddNode(currentMap, contextMenuNode.Id, "");
+        await ApplyLayout();
+    }
+
+    private void DeleteContextNode()
+    {
+        throw new NotImplementedException();
+    }
+
+    private async Task UnpinContextNode()
+    {
+        if (contextMenuNode == null || currentMap == null) return;
+
+        MindMapService.UnpinNode(currentMap, contextMenuNode.Id);
+        CloseContextMenu();
+        await ApplyLayout();
+    }
+    #endregion
+
+
+
+    #region Move & Pin
+    private Guid? draggingNodeId;
+    private double? lastMouseX, lastMouseY;
+
+    private void OnNodeMouseDown(MouseEventArgs e, MindMapNode node)
+    {
+        if (e.Button != 0) return; // nur linke Maustaste startet Dragging
+        if (node.ParentId == null) return; // Root ist fix, nicht ziehbar
+
+        draggingNodeId = node.Id;
+        lastMouseX = e.ClientX;
+        lastMouseY = e.ClientY;
+    }
+
+    private void OnSvgMouseDown(MouseEventArgs e)
+    {
+        if (e.Button != 0) return; // nur linke Maustaste
+        isPanning = true;
+        panStartX = e.ClientX;
+        panStartY = e.ClientY;
+    }
+
+    private async Task OnSvgMouseMove(MouseEventArgs e)
+    {
+        double scale = viewBoxWidth / 1000.0;
+
+        if (isPanning && panStartX != null && panStartY != null)
+        {
+            double deltaX = (e.ClientX - panStartX.Value) * scale;
+            double deltaY = (e.ClientY - panStartY.Value) * scale;
+
+            viewBoxX -= deltaX;
+            viewBoxY -= deltaY;
+
+            panStartX = e.ClientX;
+            panStartY = e.ClientY;
+            return; // nicht gleichzeitig Node-Drag-Logik ausführen
+        }
+
+        if (draggingNodeId == null || lastMouseX == null || currentMap == null) return;
+
+        var node = currentMap.Nodes.FirstOrDefault(n => n.Id == draggingNodeId);
+        if (node == null) return;
+
+        double deltaNodeX = (e.ClientX - lastMouseX.Value) * scale;
+        double deltaNodeY = (e.ClientY - lastMouseY.Value) * scale;
+
+        node.Layout.X += deltaNodeX;
+        node.Layout.Y += deltaNodeY;
+        hasDraggedMoved = true;
+
+        lastMouseX = e.ClientX;
+        lastMouseY = e.ClientY;
+    }
+
+    private async Task OnSvgMouseUp(MouseEventArgs e)
+    {
+        if (isPanning)
+        {
+            isPanning = false;
+            panStartX = null;
+            panStartY = null;
+            return;
+        }
+        if (draggingNodeId == null || currentMap == null) return;
+
+        var node = currentMap.Nodes.FirstOrDefault(n => n.Id == draggingNodeId);
+        if (node != null)
+            node.Layout.IsPinned = true;
+
+        draggingNodeId = null;
+        lastMouseX = null;
+        lastMouseY = null;
+
+        await ApplyLayout();
+    }
+
+    private static (double X, double Y) GetBoundaryPoint(MindMapNode node, double towardsX, double towardsY)
+    {
+        double cx = node.Layout.X, cy = node.Layout.Y;
+        double hw = node.Layout.Width / 2, hh = node.Layout.Height / 2;
+
+        double dx = towardsX - cx;
+        double dy = towardsY - cy;
+
+        double tx = dx != 0 ? hw / Math.Abs(dx) : double.PositiveInfinity;
+        double ty = dy != 0 ? hh / Math.Abs(dy) : double.PositiveInfinity;
+        double t = Math.Min(tx, ty);
+
+        return (cx + dx * t, cy + dy * t);
+    }
+    #endregion
+
+
+    #region Pan & Zoom
+    private bool hasDraggedMoved = false;
+
+    private double viewBoxX = -500, viewBoxY = -300;
+    private double viewBoxWidth = 1000, viewBoxHeight = 600;
+
+    private bool isPanning = false;
+    private double? panStartX, panStartY;
+
+
+
+    private void OnSvgWheel(WheelEventArgs e)
+    {
+        double zoomFactor = e.DeltaY < 0 ? 0.9 : 1.1;
+
+        // Mausposition relativ zum SVG (0 bis 1000 / 0 bis 600, weil das die feste Pixel-Größe deines <svg> ist)
+        double mouseXRatio = e.OffsetX / 1000.0;
+        double mouseYRatio = e.OffsetY / 600.0;
+
+        double newWidth = viewBoxWidth * zoomFactor;
+        double newHeight = viewBoxHeight * zoomFactor;
+
+        // viewBoxX/Y so verschieben, dass der Punkt unter der Maus an derselben Stelle bleibt
+        viewBoxX += (viewBoxWidth - newWidth) * mouseXRatio;
+        viewBoxY += (viewBoxHeight - newHeight) * mouseYRatio;
+
+        viewBoxWidth = newWidth;
+        viewBoxHeight = newHeight;
+    }
+    #endregion
+
 }

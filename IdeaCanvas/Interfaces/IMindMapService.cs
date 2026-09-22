@@ -10,5 +10,6 @@ namespace IdeaCanvas.Interfaces
         public void ReorderSiblings(MindMap map, Guid? parentId, IEnumerable<Guid> orderedNodeIds);
         public void UpdateText(MindMap map, Guid nodeId, string text);
         public void UpdateDescription(MindMap map, Guid nodeId, string description);
+        public void UnpinNode(MindMap map, Guid nodeId);
     }
 }

@@ -18,7 +18,7 @@ namespace IdeaCanvas.Services
                 throw new InvalidOperationException("Root-Node already exists.");
 
             var siblings = GetChildren(map, parentId);
-            
+
 
             MindMapNode newNode = new MindMapNode
             {
@@ -70,10 +70,19 @@ namespace IdeaCanvas.Services
             return true;
         }
 
+        public void UnpinNode(MindMap map, Guid nodeId)
+        {
+            var node = GetNodeById(map, nodeId);
+            if (node == null)
+                throw new InvalidOperationException($"Node {nodeId} not found.");
+            node.Layout.IsPinned = false;
+            map.ModifiedAt = DateTime.Now;
+        }
+
         public bool MoveNode(MindMap map, Guid nodeId, Guid newParentId, int newSortOrder)
         {
 
-            MindMapNode? node = GetNodeById(map, nodeId);
+            var node = GetNodeById(map, nodeId);
             if (node == null)
                 throw new InvalidOperationException($"Node {nodeId} not found.");
 
@@ -114,7 +123,9 @@ namespace IdeaCanvas.Services
         }
 
 
-        private MindMapNode? GetNodeById(MindMap map,Guid id)
+
+
+        private MindMapNode? GetNodeById(MindMap map, Guid id)
         {
             return map.Nodes.FirstOrDefault(x => x.Id == id);
         }
