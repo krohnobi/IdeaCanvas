@@ -90,19 +90,24 @@ namespace IdeaCanvas.Services
                 if (offsetX == 0 && offsetY == 0)
                     continue; // nichts zu tun, Positionen stimmen schon überein
 
-                // Denselben Offset auf JEDEN Nachfahren addieren, damit die ganze
-                // Unterstruktur "im Ganzen" mitwandert statt nur der Pin-Node selbst.
+                // Denselben Offset auf jeden UNGEPINNTEN Nachfahren addieren. Bereits selbst
+                // gepinnte Nachfahren werden bewusst ausgenommen: würden sie mitverschoben,
+                // würde sich bei jedem ApplyLayout-Aufruf ein neuer (eigentlich bedeutungsloser)
+                // Offset draufaddieren, weil MSAGLs rohe Position für den Parent nie exakt
+                // gleich ausfällt - das gepinnte Kind würde dadurch bei jedem Aufruf ein
+                // Stückchen "wegwandern", statt fix zu bleiben. Ein gepinntes Kind bleibt
+                // also absolut fix, unabhängig davon, was mit seinem Parent passiert.
                 foreach (var descendantId in GetSubtreeIds(map, pinnedNode.Id))
                 {
                     if (descendantId == pinnedNode.Id)
                         continue; // der gepinnte Node selbst ist schon an der richtigen Stelle
 
                     var node = map.Nodes.FirstOrDefault(n => n.Id == descendantId);
-                    if (node != null)
-                    {
-                        node.Layout.X += offsetX;
-                        node.Layout.Y += offsetY;
-                    }
+                    if (node == null || node.Layout.IsPinned)
+                        continue;
+
+                    node.Layout.X += offsetX;
+                    node.Layout.Y += offsetY;
                 }
             }
         }

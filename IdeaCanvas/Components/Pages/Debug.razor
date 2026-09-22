@@ -6,179 +6,200 @@
 @using IdeaCanvas.Models
 @using Microsoft.AspNetCore.Components.Web
 
-<h1>Debug funktioniert</h1>
-@inject IJSRuntime JS
-@inject IMindMapService MindMapService
-@inject ILayoutService LayoutService
-@inject IMindMapStorageService StorageService
+<div class="idea-canvas-page">
 
-<button @onclick=CreateTestMap>Create Test Map</button>
+    <h1>Debug funktioniert</h1>
+    <p class="subtitle">IdeaCanvas — Layout- und Interaktions-Werkstatt</p>
 
-@if (currentMap != null)
-{
-    <label>
-        Curve Strength: @curveStrength
-        <input type="range" min="0" max="1" step="0.1"
-               value="@curveStrength"
-               @oninput="OnCurveStrengthChanged" />
-    </label>
-    <button @onclick=ApplyLayout>Apply Layout</button>
+    @inject IJSRuntime JS
+    @inject IMindMapService MindMapService
+    @inject ILayoutService LayoutService
+    @inject IMindMapStorageService StorageService
 
+    <div class="toolbar">
+        <button class="primary" @onclick=CreateTestMap>Create Test Map</button>
+    </div>
 
-    #region Context Menu
-
-    @if (contextMenuVisible && contextMenuNode != null)
+    @if (currentMap != null)
     {
-        // close context menu on click
-        <div @onclick="CloseContextMenu" @oncontextmenu="CloseContextMenu"
-             style="position: fixed; inset: 0; z-index: 999;"></div>
+        <div class="toolbar">
+            <div class="curve-control">
+                <label>Curve Strength: @curveStrength</label>
+                <input type="range" min="0" max="1" step="0.1"
+                       value="@curveStrength"
+                       @oninput="OnCurveStrengthChanged" />
+            </div>
+            <div class="divider"></div>
+            <button @onclick=ApplyLayout>Apply Layout</button>
+            <button @onclick=SaveMap>Save Map</button>
+        </div>
 
-        <div style="position: fixed; left: @(contextMenuX)px; top: @(contextMenuY)px;
-            background: white; border: 1px solid #ccc; box-shadow: 0 2px 6px rgba(0,0,0,0.2); z-index: 1000;">
-            <div @onclick="AddChildToContextNode">Kind hinzufügen</div>
-            <div @onclick="() => StartEdit(EditField.Text)">Text Bearbeiten</div>
-            <div @onclick="() => StartEdit(EditField.Description)">Beschreibung bearbeiten</div>
-            @if (contextMenuNode.ParentId != null)
-            {
-                <div @onclick="DeleteContextNode">Löschen</div>
-            }
-            @if (contextMenuNode.Layout.IsPinned)
-            {
-                <div @onclick="UnpinContextNode">Position lösen</div>
-            }
+        #region Context Menu
+
+        @if (contextMenuVisible && contextMenuNode != null)
+        {
+            // close context menu on click
+            <div @onclick="CloseContextMenu" @oncontextmenu="CloseContextMenu"
+                 style="position: fixed; inset: 0; z-index: 999;"></div>
+
+            <div class="context-menu"
+                 style="position: fixed; left: @(contextMenuX)px; top: @(contextMenuY)px; z-index: 1000;">
+                <div @onclick="AddChildToContextNode">Kind hinzufügen</div>
+                <div @onclick="() => StartEdit(EditField.Text)">Text Bearbeiten</div>
+                <div @onclick="() => StartEdit(EditField.Description)">Beschreibung bearbeiten</div>
+                @if (contextMenuNode.ParentId != null)
+                {
+                    <div class="menu-danger" @onclick="DeleteContextNode">Löschen</div>
+                }
+                @if (contextMenuNode.Layout.IsPinned)
+                {
+                    <div @onclick="UnpinContextNode">Position lösen</div>
+                }
+            </div>
+        }
+        #endregion
+
+        <div class="canvas-frame">
+            <svg viewBox="@($"{viewBoxX.ToString(CultureInfo.InvariantCulture)} {viewBoxY.ToString(CultureInfo.InvariantCulture)} {viewBoxWidth.ToString(CultureInfo.InvariantCulture)} {viewBoxHeight.ToString(CultureInfo.InvariantCulture)}")"
+                 @onwheel="OnSvgWheel" @onwheel:preventDefault="true"
+                 @onmousemove="OnSvgMouseMove" @onmouseup="OnSvgMouseUp"
+                 @onmousedown="OnSvgMouseDown"
+                 width="@CanvasWidth.ToString(CultureInfo.InvariantCulture)"
+                 height="@CanvasHeight.ToString(CultureInfo.InvariantCulture)">
+
+                <g transform="@($"translate({(CanvasWidth / 2).ToString(CultureInfo.InvariantCulture)}, {(CanvasHeight / 2).ToString(CultureInfo.InvariantCulture)})")">
+                    @foreach (var node in currentMap.Nodes)
+                    {
+                        <rect class="node-rect @(node.Layout.IsPinned ? "is-pinned" : "")"
+                              @oncontextmenu="(MouseEventArgs e) => OnNodeRightClick(e, node)"
+                              @oncontextmenu:preventDefault="true"
+                              @onmousedown="(e) => OnNodeMouseDown(e, node)"
+                              @onmousedown:stopPropagation="true"
+                              x="@((node.Layout.X - node.Layout.Width / 2).ToString(CultureInfo.InvariantCulture))"
+                              y="@((node.Layout.Y - node.Layout.Height / 2).ToString(CultureInfo.InvariantCulture))"
+                              width="@node.Layout.Width.ToString(CultureInfo.InvariantCulture)"
+                              height="@node.Layout.Height.ToString(CultureInfo.InvariantCulture)">
+
+                            @if (!string.IsNullOrWhiteSpace(node.Description))
+                            {
+                                <title>@node.Description</title>
+                            }
+                        </rect>
+
+                        @if (node.Layout.IsPinned)
+                        {
+                            <circle class="pin-icon"
+                                    cx="@((node.Layout.X + node.Layout.Width / 2 - 8).ToString(CultureInfo.InvariantCulture))"
+                                    cy="@((node.Layout.Y - node.Layout.Height / 2 + 8).ToString(CultureInfo.InvariantCulture))"
+                                    r="4" />
+                        }
+
+                        <foreignObject style="@(editingNodeId == node.Id ? "" : "pointer-events: none;")"
+                                       x="@((node.Layout.X - node.Layout.Width / 2).ToString(CultureInfo.InvariantCulture))"
+                                       y="@((node.Layout.Y - node.Layout.Height / 2).ToString(CultureInfo.InvariantCulture))"
+                                       width="@node.Layout.Width.ToString(CultureInfo.InvariantCulture)"
+                                       height="@node.Layout.Height.ToString(CultureInfo.InvariantCulture)">
+                            @if (editingNodeId == node.Id && editingField == EditField.Text)
+                            {
+                                <input class="node-input" value="@node.Text" @onchange="(e) => SaveEdit(node, e)" />
+                            }
+                            else if (editingNodeId == node.Id && editingField == EditField.Description)
+                            {
+                                <input class="node-input" value="@node.Description" @onchange="(e) => SaveEdit(node, e)" />
+                            }
+                            else
+                            {
+                                <div class="node-label" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; pointer-events: none;">
+                                    @node.Text
+                                </div>
+                            }
+
+                        </foreignObject>
+
+
+                    }
+
+
+                    @foreach (var edge in currentMap.Edges)
+                    {
+                        if (draggingNodeId != null)
+                        {
+                            var source = currentMap.Nodes.FirstOrDefault(n => n.Id == edge.SourceNodeId);
+                            var target = currentMap.Nodes.FirstOrDefault(n => n.Id == edge.TargetNodeId);
+                            if (source != null && target != null)
+                            {
+                                var start = GetBoundaryPoint(source, target.Layout.X, target.Layout.Y);
+                                var end = GetBoundaryPoint(target, source.Layout.X, source.Layout.Y);
+
+                                <line class="edge-line"
+                                      x1="@start.X.ToString(CultureInfo.InvariantCulture)"
+                                      y1="@start.Y.ToString(CultureInfo.InvariantCulture)"
+                                      x2="@end.X.ToString(CultureInfo.InvariantCulture)"
+                                      y2="@end.Y.ToString(CultureInfo.InvariantCulture)" />
+                            }
+                        }
+                        else
+                        {
+                            var pointsAttr = string.Join(" ", edge.Points.Select(p =>
+                                $"{p.X.ToString(CultureInfo.InvariantCulture)},{p.Y.ToString(CultureInfo.InvariantCulture)}"));
+                            <polyline class="edge-line" points="@pointsAttr" />
+                        }
+                    }
+
+                </g>
+
+            </svg>
+        </div>
+
+        <div class="node-table-wrap">
+            <h2>Nodes</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Text</th>
+                        <th>Description</th>
+                        <th>Id</th>
+                        <th>ParentId</th>
+                        <th>X</th>
+                        <th>Y</th>
+                        <th>Width</th>
+                        <th>Height</th>
+                        <th>Pinned</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var node in currentMap.Nodes)
+                    {
+                        <tr>
+                            <td>@node.Text</td>
+                            <td>@node.Description</td>
+                            <td>@node.Id</td>
+                            <td>@node.ParentId</td>
+                            <td>@node.Layout.X</td>
+                            <td>@node.Layout.Y</td>
+                            <td>@node.Layout.Width</td>
+                            <td>@node.Layout.Height</td>
+                            <td>@node.Layout.IsPinned</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         </div>
     }
-    #endregion
 
-    <svg viewBox="@($"{viewBoxX.ToString(CultureInfo.InvariantCulture)} {viewBoxY.ToString(CultureInfo.InvariantCulture)} {viewBoxWidth.ToString(CultureInfo.InvariantCulture)} {viewBoxHeight.ToString(CultureInfo.InvariantCulture)}")"
-         @onwheel="OnSvgWheel" @onwheel:preventDefault="true"
-         @onmousemove="OnSvgMouseMove" @onmouseup="OnSvgMouseUp"
-         @onmousedown="OnSvgMouseDown"
-         width="1000"
-         height="600"
-         style="border: 1px solid #888;">
+    <div class="toolbar">
+        <button @onclick=EmptyMap>Empty Map</button>
+        <button @onclick=LoadMap>Load Map</button>
+    </div>
 
-        <g transform="translate(500, 300)">
-            @foreach (var node in currentMap.Nodes)
-            {
-                <rect @oncontextmenu="(MouseEventArgs e) => OnNodeRightClick(e, node)"
-                      @oncontextmenu:preventDefault="true"
-                      @onmousedown="(e) => OnNodeMouseDown(e, node)"
-                      @onmousedown:stopPropagation="true"
-                      x="@((node.Layout.X - node.Layout.Width / 2).ToString(CultureInfo.InvariantCulture))"
-                      y="@((node.Layout.Y - node.Layout.Height / 2).ToString(CultureInfo.InvariantCulture))"
-                      width="@node.Layout.Width.ToString(CultureInfo.InvariantCulture)"
-                      height="@node.Layout.Height.ToString(CultureInfo.InvariantCulture)"
-                      fill="white"
-                      stroke="black">
-
-                    @if (!string.IsNullOrWhiteSpace(node.Description))
-                    {
-                        <title>@node.Description</title>
-                    }
-                </rect>
-
-                <foreignObject style="@(editingNodeId == node.Id ? "" : "pointer-events: none;")"
-                               x="@((node.Layout.X - node.Layout.Width / 2).ToString(CultureInfo.InvariantCulture))"
-                               y="@((node.Layout.Y - node.Layout.Height / 2).ToString(CultureInfo.InvariantCulture))"
-                               width="@node.Layout.Width.ToString(CultureInfo.InvariantCulture)"
-                               height="@node.Layout.Height.ToString(CultureInfo.InvariantCulture)">
-                    @if (editingNodeId == node.Id && editingField == EditField.Text)
-                    {
-                        <input value="@node.Text" @onchange="(e) => SaveEdit(node, e)"
-                               style="width:100%; height:100%;" />
-                    }
-                    else if (editingNodeId == node.Id && editingField == EditField.Description)
-                    {
-                        <input value="@node.Description" @onchange="(e) => SaveEdit(node, e)"
-                               style="width:100%; height:100%;" />
-                    }
-                    else
-                    {
-                        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; pointer-events: none;">
-                            @node.Text
-                        </div>
-                    }
-
-                </foreignObject>
-
-                
-            }
-
-            
-            @foreach (var edge in currentMap.Edges)
-            {
-                if (draggingNodeId != null)
-                {
-                    var source = currentMap.Nodes.FirstOrDefault(n => n.Id == edge.SourceNodeId);
-                    var target = currentMap.Nodes.FirstOrDefault(n => n.Id == edge.TargetNodeId);
-                    if (source != null && target != null)
-                    {
-                        var start = GetBoundaryPoint(source, target.Layout.X, target.Layout.Y);
-                        var end = GetBoundaryPoint(target, source.Layout.X, source.Layout.Y);
-
-                        <line x1="@start.X.ToString(CultureInfo.InvariantCulture)"
-                              y1="@start.Y.ToString(CultureInfo.InvariantCulture)"
-                              x2="@end.X.ToString(CultureInfo.InvariantCulture)"
-                              y2="@end.Y.ToString(CultureInfo.InvariantCulture)"
-                              stroke="black" />
-                    }
-                }
-                else
-                {
-                    var pointsAttr = string.Join(" ", edge.Points.Select(p =>
-                        $"{p.X.ToString(CultureInfo.InvariantCulture)},{p.Y.ToString(CultureInfo.InvariantCulture)}"));
-                    <polyline points="@pointsAttr" stroke="black" fill="none" />
-                }
-            }
-
-        </g>
-
-    </svg>
-
-
-
-    <table>
-        <thead>
-            <tr>
-                <th>Text</th>
-                <th>Description</th>
-                <th>Id</th>
-                <th>ParentId</th>
-                <th>X</th>
-                <th>Y</th>
-                <th>Width</th>
-                <th>Height</th>
-                <th>Pinned</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var node in currentMap.Nodes)
-            {
-                <tr>
-                    <td>@node.Text</td>
-                    <td>@node.Description</td>
-                    <td>@node.Id</td>
-                    <td>@node.ParentId</td>
-                    <td>@node.Layout.X</td>
-                    <td>@node.Layout.Y</td>
-                    <td>@node.Layout.Width</td>
-                    <td>@node.Layout.Height</td>
-                    <td>@node.Layout.IsPinned</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-
-    <button @onclick=SaveMap>Save Map</button>
-
-}
-<button @onclick=EmptyMap>Empty Map</button>
-<button @onclick=LoadMap>Load Map</button>
-
-
+</div>
 
 @code {
+
+    // Feste Canvas-Größe in Pixeln - Referenzwert für alle Maus-/Zoom-/Pan-Berechnungen.
+    // Änderst du diese, ziehen viewBox-Start, Zoom und Drag automatisch mit.
+    private const double CanvasWidth = 1400;
+    private const double CanvasHeight = 800;
 
     private MindMap? currentMap;
     private double curveStrength = 0;
@@ -256,7 +277,7 @@
         if (double.TryParse(e.Value?.ToString(), out double curveStrengthValue))
         {
             curveStrength = curveStrengthValue;
-            await ApplyLayout(); // deine bestehende Methode, macht Text-Messung + Layout
+            await ApplyLayout();
         }
     }
 
@@ -348,8 +369,8 @@
 
     private void OnNodeMouseDown(MouseEventArgs e, MindMapNode node)
     {
-        if (e.Button != 0) return; // nur linke Maustaste startet Dragging
-        if (node.ParentId == null) return; // Root ist fix, nicht ziehbar
+        if (e.Button != 0) return;
+        if (node.ParentId == null) return;
 
         draggingNodeId = node.Id;
         lastMouseX = e.ClientX;
@@ -358,7 +379,7 @@
 
     private void OnSvgMouseDown(MouseEventArgs e)
     {
-        if (e.Button != 0) return; // nur linke Maustaste
+        if (e.Button != 0) return;
         isPanning = true;
         panStartX = e.ClientX;
         panStartY = e.ClientY;
@@ -366,7 +387,7 @@
 
     private async Task OnSvgMouseMove(MouseEventArgs e)
     {
-        double scale = viewBoxWidth / 1000.0;
+        double scale = viewBoxWidth / CanvasWidth;
 
         if (isPanning && panStartX != null && panStartY != null)
         {
@@ -378,7 +399,7 @@
 
             panStartX = e.ClientX;
             panStartY = e.ClientY;
-            return; // nicht gleichzeitig Node-Drag-Logik ausführen
+            return;
         }
 
         if (draggingNodeId == null || lastMouseX == null || currentMap == null) return;
@@ -439,8 +460,8 @@
     #region Pan & Zoom
     private bool hasDraggedMoved = false;
 
-    private double viewBoxX = -500, viewBoxY = -300;
-    private double viewBoxWidth = 1000, viewBoxHeight = 600;
+    private double viewBoxX = -CanvasWidth / 2, viewBoxY = -CanvasHeight / 2;
+    private double viewBoxWidth = CanvasWidth, viewBoxHeight = CanvasHeight;
 
     private bool isPanning = false;
     private double? panStartX, panStartY;
@@ -451,14 +472,12 @@
     {
         double zoomFactor = e.DeltaY < 0 ? 0.9 : 1.1;
 
-        // Mausposition relativ zum SVG (0 bis 1000 / 0 bis 600, weil das die feste Pixel-Größe deines <svg> ist)
-        double mouseXRatio = e.OffsetX / 1000.0;
-        double mouseYRatio = e.OffsetY / 600.0;
+        double mouseXRatio = e.OffsetX / CanvasWidth;
+        double mouseYRatio = e.OffsetY / CanvasHeight;
 
         double newWidth = viewBoxWidth * zoomFactor;
         double newHeight = viewBoxHeight * zoomFactor;
 
-        // viewBoxX/Y so verschieben, dass der Punkt unter der Maus an derselben Stelle bleibt
         viewBoxX += (viewBoxWidth - newWidth) * mouseXRatio;
         viewBoxY += (viewBoxHeight - newHeight) * mouseYRatio;
 
