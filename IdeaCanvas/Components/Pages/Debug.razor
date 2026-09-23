@@ -1,10 +1,12 @@
 ﻿@page "/Debug"
 
 @using System.Globalization
+@using CommunityToolkit.Maui.Storage
 @using IdeaCanvas.DTOs
 @using IdeaCanvas.Interfaces
 @using IdeaCanvas.Models
 @using Microsoft.AspNetCore.Components.Web
+
 
 <div class="idea-canvas-page">
 
@@ -25,13 +27,14 @@
         <div class="toolbar">
             <div class="curve-control">
                 <label>Curve Strength: @curveStrength</label>
-                <input type="range" min="0" max="1" step="0.1"
+                <input type="range" min="0" max="0.3" step="0.1"
                        value="@curveStrength"
                        @oninput="OnCurveStrengthChanged" />
             </div>
             <div class="divider"></div>
             <button @onclick=ApplyLayout>Apply Layout</button>
             <button @onclick=SaveMap>Save Map</button>
+            <button @onclick=ExportPdf>Export als PDF</button>
         </div>
 
         #region Context Menu
@@ -59,8 +62,9 @@
         }
         #endregion
 
-        <div class="canvas-frame">
-            <svg viewBox="@($"{viewBoxX.ToString(CultureInfo.InvariantCulture)} {viewBoxY.ToString(CultureInfo.InvariantCulture)} {viewBoxWidth.ToString(CultureInfo.InvariantCulture)} {viewBoxHeight.ToString(CultureInfo.InvariantCulture)}")"
+        <div class="canvas-frame" id="CanvasFrameWrapper">
+            <svg id="CanvasSvgData" 
+                viewBox="@($"{viewBoxX.ToString(CultureInfo.InvariantCulture)} {viewBoxY.ToString(CultureInfo.InvariantCulture)} {viewBoxWidth.ToString(CultureInfo.InvariantCulture)} {viewBoxHeight.ToString(CultureInfo.InvariantCulture)}")"
                  @onwheel="OnSvgWheel" @onwheel:preventDefault="true"
                  @onmousemove="OnSvgMouseMove" @onmouseup="OnSvgMouseUp"
                  @onmousedown="OnSvgMouseDown"
@@ -101,11 +105,11 @@
                                        height="@node.Layout.Height.ToString(CultureInfo.InvariantCulture)">
                             @if (editingNodeId == node.Id && editingField == EditField.Text)
                             {
-                                <input class="node-input" value="@node.Text" @onchange="(e) => SaveEdit(node, e)" />
+                                <input class="node-input" value="@node.Text" @onchange="(e) => SaveEdit(node, e)" @ref="editInputRef" />
                             }
                             else if (editingNodeId == node.Id && editingField == EditField.Description)
                             {
-                                <input class="node-input" value="@node.Description" @onchange="(e) => SaveEdit(node, e)" />
+                                <input class="node-input" value="@node.Description" @onchange="(e) => SaveEdit(node, e)" @ref="editInputRef" />
                             }
                             else
                             {
@@ -292,6 +296,19 @@
     private Guid? editingNodeId;
     private EditField editingField = EditField.None;
 
+    #region Autofocus on edit
+    private bool shouldFocusEditInput = false;
+    private ElementReference? editInputRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (shouldFocusEditInput && editInputRef != null)
+        {
+            shouldFocusEditInput = false; // sofort zurücksetzen, damit's nur EINMAL passiert
+            await JS.InvokeVoidAsync("ideaCanvas.focusElement", editInputRef);
+        }
+    }
+    #endregion
 
     private void OnNodeRightClick(MouseEventArgs e, MindMapNode node)
     {
@@ -313,6 +330,8 @@
         if (contextMenuNode == null) return;
         editingNodeId = contextMenuNode.Id;
         editingField = field;
+        shouldFocusEditInput = true;
+
 
         CloseContextMenu();
     }
@@ -342,13 +361,24 @@
         if (contextMenuNode == null || currentMap == null)
             return;
 
-        MindMapService.AddNode(currentMap, contextMenuNode.Id, "");
+        var newNode = MindMapService.AddNode(currentMap, contextMenuNode.Id, "");
+
+        editingNodeId = newNode.Id;        // <- neu: direkt in Edit-Modus
+        editingField = EditField.Text;     // <- neu
+        shouldFocusEditInput = true;       // <- neu
+
         await ApplyLayout();
     }
 
-    private void DeleteContextNode()
+    private async Task DeleteContextNode()
     {
-        throw new NotImplementedException();
+        if (contextMenuNode == null || currentMap == null) return;
+
+        MindMapService.RemoveNode(currentMap, contextMenuNode.Id);
+        await ApplyLayout();
+
+        CloseContextMenu();
+
     }
 
     private async Task UnpinContextNode()
@@ -486,4 +516,71 @@
     }
     #endregion
 
+
+    #region Export
+    private async Task ExportPdf()
+    {
+        try
+        {
+            if (currentMap == null) throw new ArgumentNullException("Keine MindMap gefunden.");
+
+            string base64Png = await JS.InvokeAsync<string>("ideaCanvas.svgToPngBase64", "CanvasFrameWrapper");
+
+
+            string targetPath = await GetTargetPath();
+
+            if (string.IsNullOrEmpty(targetPath))
+            {
+                throw new Exception("Kein valider Ordner ausgewählt.");
+            }
+
+            bool success = MindMapService.ExportPdf(base64Png, targetPath);
+
+            if (!success)
+            {
+                throw new Exception("Export fehlgeschlagen.");
+            }
+
+            if (Application.Current?.MainPage != null)
+            {
+                await Application.Current.MainPage.DisplayAlertAsync(
+                    "Erfolg",
+                    $"PDF erfolgreich erstellt unter:\n{targetPath}",
+                    "OK"
+                );
+            }
+        }catch(Exception ex)
+        {
+            if (Application.Current?.MainPage != null)
+            {
+                await Application.Current.MainPage.DisplayAlertAsync(
+                    "Fehler",
+                    $"Fehler beim Export: {ex.Message}",
+                    "Schließen"
+                );
+            }
+        }
+    }
+
+    private async Task<string> GetTargetPath()
+    {
+
+
+        var folderResult = await FolderPicker.Default.PickAsync(CancellationToken.None);
+
+        // Prüfen, ob der Nutzer abgebrochen hat
+        if (!folderResult.IsSuccessful || folderResult.Folder == null)
+        {
+            return "";
+        }
+
+        string targetFolder = folderResult.Folder.Path;
+
+        string fileName = $"{currentMap.Title.ToLower()}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+        string fullPath = Path.Combine(targetFolder, fileName);
+
+        return fullPath;
+    }
+
+    #endregion
 }

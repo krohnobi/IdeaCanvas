@@ -64,51 +64,51 @@ namespace IdeaCanvas.Services
         }
 
         /// <summary>
-        /// Rückt die Unterbäume gepinnter Nodes gerade, nachdem MDS ihre Positionen
-        /// "verwürfelt" hat. Idee: MDS' Ergebnis ist nur bis auf Verschiebung/Drehung
-        /// korrekt - wir korrigieren hier nur die Verschiebung (keine Drehung).
+        /// Ersetzt die alte "nur oberste Pins"-Logik. Läuft top-down vom Root und trägt
+        /// die nötige Verschiebung kaskadierend weiter - jeder gepinnte Node addiert seine
+        /// EIGENE Korrektur zu der, die er von seinen Vorfahren bereits geerbt hat. So bleiben
+        /// auch verschachtelte Pins (gepinntes Kind eines gepinnten Elternteils) korrekt an
+        /// ihrer jeweils richtigen Position, samt ihrer eigenen (nicht gepinnten) Nachfahren.
         /// </summary>
         private void AlignPinnedSubtrees(MindMap map, Dictionary<Guid, Node> nodeMap)
         {
-            // Nur "oberste" Pins behandeln (deren Vorfahre nicht selbst schon gepinnt ist) -
-            // sonst würde ein gepinntes Kind eines gepinnten Elternteils DOPPELT korrigiert
-            // werden (einmal über den Elternteil-Durchlauf, einmal über seinen eigenen),
-            // was bei wiederholtem ApplyLayout zu immer weiter "wandernden" Nodes führt.
-            var topLevelPinned = map.Nodes.Where(n => n.Layout.IsPinned && !HasPinnedAncestor(map, n));
-
-            foreach (var pinnedNode in topLevelPinned)
+            foreach (var root in map.Nodes.Where(n => n.ParentId == null))
             {
-                if (!nodeMap.TryGetValue(pinnedNode.Id, out var geomNode))
-                    continue;
+                PropagateOffset(map, nodeMap, root, offsetX: 0, offsetY: 0);
+            }
+        }
 
-                // Differenz zwischen "wo der Node WIRKLICH sein soll" (Layout.X/Y, vom
-                // Nutzer gezogen) und "wo MSAGL ihn gerade hingerechnet hat" (geomNode.Center).
-                // Das ist der Korrektur-Vektor, den der ganze Unterbaum mitmachen muss.
-                double offsetX = pinnedNode.Layout.X - geomNode.Center.X;
-                double offsetY = pinnedNode.Layout.Y - geomNode.Center.Y;
+        private void PropagateOffset(MindMap map, Dictionary<Guid, Node> nodeMap, MindMapNode node,
+            double offsetX, double offsetY)
+        {
+            if (!nodeMap.TryGetValue(node.Id, out var geomNode))
+                return;
 
-                if (offsetX == 0 && offsetY == 0)
-                    continue; // nichts zu tun, Positionen stimmen schon überein
+            double ownOffsetX = offsetX;
+            double ownOffsetY = offsetY;
 
-                // Denselben Offset auf jeden UNGEPINNTEN Nachfahren addieren. Bereits selbst
-                // gepinnte Nachfahren werden bewusst ausgenommen: würden sie mitverschoben,
-                // würde sich bei jedem ApplyLayout-Aufruf ein neuer (eigentlich bedeutungsloser)
-                // Offset draufaddieren, weil MSAGLs rohe Position für den Parent nie exakt
-                // gleich ausfällt - das gepinnte Kind würde dadurch bei jedem Aufruf ein
-                // Stückchen "wegwandern", statt fix zu bleiben. Ein gepinntes Kind bleibt
-                // also absolut fix, unabhängig davon, was mit seinem Parent passiert.
-                foreach (var descendantId in GetSubtreeIds(map, pinnedNode.Id))
-                {
-                    if (descendantId == pinnedNode.Id)
-                        continue; // der gepinnte Node selbst ist schon an der richtigen Stelle
+            if (node.Layout.IsPinned)
+            {
+                // Wo MSAGL die Node hingerechnet hätte, WENN man die geerbte Korrektur der
+                // Vorfahren schon mit einrechnet:
+                double predictedX = geomNode.Center.X + offsetX;
+                double predictedY = geomNode.Center.Y + offsetY;
 
-                    var node = map.Nodes.FirstOrDefault(n => n.Id == descendantId);
-                    if (node == null || node.Layout.IsPinned)
-                        continue;
+                // Zusätzliche EIGENE Korrektur obendrauf, damit sie an ihrer echten,
+                // vom Nutzer gezogenen Position landet:
+                ownOffsetX = offsetX + (node.Layout.X - predictedX);
+                ownOffsetY = offsetY + (node.Layout.Y - predictedY);
+            }
+            else
+            {
+                // Nicht gepinnt: rohe MDS-Position plus geerbte Korrektur übernehmen.
+                node.Layout.X = geomNode.Center.X + ownOffsetX;
+                node.Layout.Y = geomNode.Center.Y + ownOffsetY;
+            }
 
-                    node.Layout.X += offsetX;
-                    node.Layout.Y += offsetY;
-                }
+            foreach (var child in map.Nodes.Where(n => n.ParentId == node.Id))
+            {
+                PropagateOffset(map, nodeMap, child, ownOffsetX, ownOffsetY);
             }
         }
 
@@ -127,28 +127,6 @@ namespace IdeaCanvas.Services
                 currentParentId = parent.ParentId;
             }
             return false;
-        }
-
-        /// <summary>
-        /// Liefert die Ids eines Nodes und ALLER seiner Nachfahren (Kinder, Enkel, ...).
-        /// Iterativ per Warteschlange statt Rekursion (Breadth-First).
-        /// </summary>
-        private static IEnumerable<Guid> GetSubtreeIds(MindMap map, Guid rootId)
-        {
-            var result = new List<Guid>();
-            var queue = new Queue<Guid>();
-            queue.Enqueue(rootId);
-
-            while (queue.Count > 0)
-            {
-                var currentId = queue.Dequeue();
-                result.Add(currentId);
-
-                foreach (var child in map.Nodes.Where(n => n.ParentId == currentId))
-                    queue.Enqueue(child.Id);
-            }
-
-            return result;
         }
 
         /// <summary>
@@ -249,7 +227,8 @@ namespace IdeaCanvas.Services
 
                 var edgeLayout = new EdgeLayout { SourceNodeId = sourceId, TargetNodeId = targetId };
 
-                bool isPinned = (sourceNode?.Layout.IsPinned ?? false) || (targetNode?.Layout.IsPinned ?? false);
+                bool isPinned = (sourceNode != null && (sourceNode.Layout.IsPinned || HasPinnedAncestor(map, sourceNode)))
+             || (targetNode != null && (targetNode.Layout.IsPinned || HasPinnedAncestor(map, targetNode)));
 
                 // Ist einer der beiden Enden gepinnt, ist MSAGLs eigene Kurve (edge.Curve)
                 // NICHT mehr korrekt (die zeigt ja auf die "rohe", unkorrigierte MDS-Position,

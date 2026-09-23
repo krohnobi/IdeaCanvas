@@ -1,5 +1,9 @@
 ﻿using IdeaCanvas.Interfaces;
 using IdeaCanvas.Models;
+using System.IO;
+using System.Text;
+using SkiaSharp;
+//using Svg.Skia;
 
 namespace IdeaCanvas.Services
 {
@@ -154,6 +158,30 @@ namespace IdeaCanvas.Services
             }
 
             return result;
+        }
+
+
+
+        public bool ExportPdf(string pngBase64, string targetPdfPath)
+        {
+            byte[] pngBytes = Convert.FromBase64String(pngBase64);
+
+            using var pngStream = new MemoryStream(pngBytes);
+            using var bitmap = SKBitmap.Decode(pngStream);
+            if (bitmap == null) return false;
+
+            using var pdfStream = File.OpenWrite(targetPdfPath);
+            using var document = SKDocument.CreatePdf(pdfStream);
+
+            using (var canvas = document.BeginPage(bitmap.Width, bitmap.Height))
+            {
+                canvas.DrawBitmap(bitmap, new SKPoint(0, 0), SKSamplingOptions.Default);
+                document.EndPage();
+            }
+
+            document.Close(); // <- HIER passiert das eigentliche Schreiben in pdfStream
+
+            return true;
         }
     }
 }
