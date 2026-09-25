@@ -295,7 +295,7 @@ namespace IdeaCanvas.Services
             double dy = end.Y - start.Y;
             double length = Math.Sqrt(dx * dx + dy * dy); // Kantenlänge (Satz des Pythagoras)
 
-            if (curveStrength <= 0 || length == 0)
+            if (length == 0)
             {
                 // Keine Wölbung gewünscht, oder Start==Ende (Division durch 0 vermeiden):
                 // einfach die zwei Endpunkte, fertig.
