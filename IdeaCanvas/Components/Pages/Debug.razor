@@ -161,6 +161,7 @@
                 <thead>
                     <tr>
                         <th>Text</th>
+                        <th>Generation</th>
                         <th>Description</th>
                         <th>Id</th>
                         <th>ParentId</th>
@@ -176,6 +177,7 @@
                     {
                         <tr>
                             <td>@node.Text</td>
+                            <td>@node.Generation</td>
                             <td>@node.Description</td>
                             <td>@node.Id</td>
                             <td>@node.ParentId</td>
@@ -473,6 +475,7 @@
     private static (double X, double Y) GetBoundaryPoint(MindMapNode node, double towardsX, double towardsY)
     {
         double cx = node.Layout.X, cy = node.Layout.Y;
+        // halfwidth and halfheight
         double hw = node.Layout.Width / 2, hh = node.Layout.Height / 2;
 
         double dx = towardsX - cx;

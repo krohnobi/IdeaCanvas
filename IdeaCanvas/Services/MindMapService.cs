@@ -1,9 +1,6 @@
 ﻿using IdeaCanvas.Interfaces;
 using IdeaCanvas.Models;
-using System.IO;
-using System.Text;
 using SkiaSharp;
-//using Svg.Skia;
 
 namespace IdeaCanvas.Services
 {
@@ -15,22 +12,48 @@ namespace IdeaCanvas.Services
             return new MindMap { Title = title };
         }
 
+
+        //private void SetAllNodesGeneration(MindMap map)
+        //{
+        //    foreach (var root in map.Nodes.Where(n => n.ParentId == null))
+        //    {
+        //        AssignGeneration(map, root, 0);
+        //    }
+        //}
+
+        //private void AssignGeneration(MindMap map, MindMapNode node, int generation)
+        //{
+        //    node.Generation = generation;
+
+        //    foreach (var child in map.Nodes.Where(n => n.ParentId == node.Id))
+        //    {
+        //        AssignGeneration(map, child, generation + 1);
+        //    }
+        //}
+
         public MindMapNode AddNode(MindMap map, Guid? parentId, string text)
         {
 
             if (parentId == null && map.Nodes.Any(n => n.ParentId == null))
                 throw new InvalidOperationException("Root-Node already exists.");
 
-            var siblings = GetChildren(map, parentId);
+            //SetAllNodesGeneration(map);
 
+            var siblings = GetChildren(map, parentId);
+            MindMapNode? parent = GetNodeById(map, parentId.Value);
+            
 
             MindMapNode newNode = new MindMapNode
             {
                 Id = Guid.NewGuid(),
                 Text = text,
                 ParentId = parentId,
+                Generation= parent.Generation+1
+
             };
             newNode.SortOrder = siblings.Count == 0 ? 0 : siblings.Max(s => s.SortOrder) + 1;
+            
+
 
             map.Nodes.Add(newNode);
             map.ModifiedAt = DateTime.Now;
@@ -83,6 +106,16 @@ namespace IdeaCanvas.Services
             map.ModifiedAt = DateTime.Now;
         }
 
+        public void UnpinAllNodes(MindMap map)
+        {
+            var pinnedNodes=map.Nodes.Where(x => x.Layout.IsPinned).ToList();
+            foreach(var pinnedNode in pinnedNodes)
+            {
+                pinnedNode.Layout.IsPinned = false;
+            }
+            map.ModifiedAt = DateTime.Now;
+        }
+
         public bool MoveNode(MindMap map, Guid nodeId, Guid newParentId, int newSortOrder)
         {
 
@@ -129,9 +162,27 @@ namespace IdeaCanvas.Services
 
 
 
-        private MindMapNode? GetNodeById(MindMap map, Guid id)
+        private MindMapNode? GetNodeById(MindMap map, Guid nodeId)
         {
-            return map.Nodes.FirstOrDefault(x => x.Id == id);
+            return map.Nodes.FirstOrDefault(x => x.Id == nodeId);
+        }
+
+        [Obsolete]
+        private int GetGeneration(MindMap map, Guid nodeId)
+        {
+            int generation = 0;
+            MindMapNode? currentNode = GetNodeById(map,nodeId);
+            if(currentNode == null)
+                throw new InvalidOperationException($"Node {nodeId} not found.");
+
+            while (currentNode.ParentId != null)
+            {
+                currentNode=GetNodeById(map, currentNode.ParentId!.Value); generation++;
+                if (currentNode == null)
+                    throw new InvalidOperationException("Parent node not found — Baum ist inkonsistent.");
+            }
+
+            return generation;
         }
 
         private List<MindMapNode> GetChildren(MindMap map, Guid? parentId)
@@ -183,5 +234,7 @@ namespace IdeaCanvas.Services
 
             return true;
         }
+
+        
     }
 }

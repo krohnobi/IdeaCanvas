@@ -1,0 +1,150 @@
+﻿@page "/mindmap"
+@using CommunityToolkit.Maui.Storage
+@using IdeaCanvas.Interfaces
+@using IdeaCanvas.Models
+
+@inject IMindMapService MindMapService
+@inject IMindMapStorageService StorageService
+
+<MindMapToolbar Map="currentMap"
+                CurveStrength="curveStrength"
+                CurveStrengthChanged="OnCurveStrengthChanged"
+                OnCreate="CreateMap"
+                OnSave="SaveMap"
+                OnLoad="LoadMap"
+                OnExportPdf="HandleExportRequested"
+                OnUnpinAll="HandleUnpinAllRequested"
+                OnResetZoom="HandleZoomResetRequested" />
+
+<MindMapCanvas @ref="canvasRef" Map="currentMap" CurveStrength="curveStrength" />
+
+@code {
+    private MindMap? currentMap;
+    private double curveStrength = 0;
+    private MindMapCanvas? canvasRef;
+
+
+
+    private void CreateMap()
+    {
+        currentMap = StorageService.CreateMap("Neue Mindmap");
+        MindMapService.AddNode(currentMap, null, "Root");
+    }
+
+    private Task OnCurveStrengthChanged(double value)
+    {
+        curveStrength = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task SaveMap()
+    {
+        try
+        {
+            if (currentMap == null) throw new ArgumentNullException("Keine MindMap gefunden.");
+
+
+            string targetPath = await GetTargetPath("json");
+
+            if (string.IsNullOrEmpty(targetPath))
+            {
+                throw new Exception("Kein valider Ordner ausgewählt.");
+            }
+
+            bool success = await StorageService.SaveAsync(currentMap, targetPath);
+
+            if (!success)
+            {
+                throw new Exception("Speichern fehlgeschlagen.");
+            }
+
+            if (Application.Current?.MainPage != null)
+            {
+                await Application.Current.MainPage.DisplayAlertAsync(
+                    "Erfolg",
+                    $"Erfolgreich gespeichert unter:\n{targetPath}",
+                    "OK"
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            if (Application.Current?.MainPage != null)
+            {
+                await Application.Current.MainPage.DisplayAlertAsync(
+                    "Fehler",
+                    $"Fehler beim speichern: {ex.Message}",
+                    "Schließen"
+                );
+            }
+        }
+    }
+
+    private async Task LoadMap()
+    {
+        try
+        {
+            var fileResult = await FilePicker.Default.PickAsync();
+
+            if (fileResult == null)
+                return; // abgebrochen, kein Fehler
+
+            currentMap = await StorageService.LoadAsync(fileResult.FullPath);
+
+            if (currentMap == null)
+            {
+                throw new Exception("Laden fehlgeschlagen.");
+            }
+        }
+        catch (Exception ex)
+        {
+            if (Application.Current?.MainPage != null)
+            {
+                await Application.Current.MainPage.DisplayAlertAsync(
+                    "Fehler",
+                    $"Fehler beim Laden: {ex.Message}",
+                    "Schließen"
+                );
+            }
+        }
+    }
+
+    private async Task HandleExportRequested()
+    {
+        if (canvasRef != null)
+            await canvasRef.ExportPdf();
+    }
+
+    private void HandleUnpinAllRequested()
+    {
+        if (currentMap != null)
+            MindMapService.UnpinAllNodes(currentMap);
+    }
+
+    private void HandleZoomResetRequested()
+    {
+        // kommt, sobald MindMapCanvas eine öffentliche ResetZoom-Methode hat
+    }
+
+    private async Task<string> GetTargetPath(string fileType)
+    {
+
+
+        var folderResult = await FolderPicker.Default.PickAsync(CancellationToken.None);
+
+        // Prüfen, ob der Nutzer abgebrochen hat
+        if (!folderResult.IsSuccessful || folderResult.Folder == null)
+        {
+            return "";
+        }
+
+        string targetFolder = folderResult.Folder.Path;
+
+        string fileName = $"{currentMap.Title.ToLower()}_{DateTime.Now:yyyyMMdd_HHmmss}.{fileType}";
+        string fullPath = Path.Combine(targetFolder, fileName);
+
+        return fullPath;
+    }
+
+    
+}

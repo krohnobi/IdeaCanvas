@@ -1,6 +1,7 @@
 ﻿using IdeaCanvas.Interfaces;
 using IdeaCanvas.Services;
 using Microsoft.Extensions.Logging;
+using CommunityToolkit.Maui;
 
 namespace IdeaCanvas
 {
@@ -9,27 +10,21 @@ namespace IdeaCanvas
         public static MauiApp CreateMauiApp()
         {
             var builder = MauiApp.CreateBuilder();
-            builder
-                .UseMauiApp<App>()
-                //.UseMauiCommunityToolkit()
-                .ConfigureFonts(fonts =>
-                {
-                    fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
-                });
-
+            builder.UseMauiApp<App>()//.UseMauiCommunityToolkit()
+            .ConfigureFonts(fonts =>
+            {
+                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
+            }).UseMauiCommunityToolkit();
             builder.Services.AddMauiBlazorWebView();
-
-            #region Load Services
+#region Load Services
             builder.Services.AddSingleton<IMindMapService, MindMapService>();
             builder.Services.AddSingleton<ILayoutService, LayoutService>();
             builder.Services.AddSingleton<IMindMapStorageService, MindMapStorageService>();
-            #endregion
-
+#endregion
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
-    		builder.Logging.AddDebug();
+            builder.Logging.AddDebug();
 #endif
-
             return builder.Build();
         }
     }
