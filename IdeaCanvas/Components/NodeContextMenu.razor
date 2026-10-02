@@ -1,5 +1,34 @@
-﻿<h3>NodeContextMenu</h3>
+@* NodeContextMenu.razor *@
+@using IdeaCanvas.Models
+
+@* close context menu on click *@
+<div @onclick="OnClose" @oncontextmenu="OnClose"
+     style="position: fixed; inset: 0; z-index: 999;"></div>
+
+<div class="context-menu"
+     style="position: fixed; left: @(X)px; top: @(Y)px; z-index: 1000;">
+    <div @onclick="OnAddChild">Kind hinzufügen</div>
+    <div @onclick="OnEditText">Text Bearbeiten</div>
+    <div @onclick="OnEditDescription">Beschreibung bearbeiten</div>
+    @if (Node.ParentId != null)
+    {
+        <div class="menu-danger" @onclick="OnDelete">Löschen</div>
+    }
+    @if (Node.Layout.IsPinned)
+    {
+        <div @onclick="OnUnpin">Position lösen</div>
+    }
+</div>
 
 @code {
+    [Parameter, EditorRequired] public MindMapNode Node { get; set; } = default!;
+    [Parameter] public double X { get; set; }
+    [Parameter] public double Y { get; set; }
 
+    [Parameter] public EventCallback OnAddChild { get; set; }
+    [Parameter] public EventCallback OnEditText { get; set; }
+    [Parameter] public EventCallback OnEditDescription { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+    [Parameter] public EventCallback OnUnpin { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
 }

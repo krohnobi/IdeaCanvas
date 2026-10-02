@@ -1,0 +1,46 @@
+﻿@* NewMapDialog.razor *@
+
+@if (Visible)
+{
+    <div class="modal-overlay" @onclick="Cancel"></div>
+    <div class="modal-box">
+        <h3>Neue Mindmap</h3>
+        <label>Name</label>
+        <input @bind="title" @bind:event="oninput" placeholder="z. B. Projektplanung" />
+
+        <label>Thema (optional)</label>
+        <input @bind="topic" @bind:event="oninput" placeholder="Worum geht es?" />
+
+        <div class="modal-actions">
+            <button @onclick="Cancel">Abbrechen</button>
+            <button class="primary" @onclick="Confirm" disabled="@string.IsNullOrWhiteSpace(title)">Erstellen</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public EventCallback<(string Title, string Topic)> OnConfirm { get; set; }
+
+    private string title = "";
+    private string topic = "";
+
+    private async Task Confirm()
+    {
+        if (string.IsNullOrWhiteSpace(title)) return;
+
+        await OnConfirm.InvokeAsync((title, topic));
+        await Close();
+    }
+
+    private async Task Cancel() => await Close();
+
+    private async Task Close()
+    {
+        title = "";
+        topic = "";
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+}

@@ -1,5 +1,6 @@
 ﻿using IdeaCanvas.Interfaces;
 using IdeaCanvas.Models;
+using SkiaSharp;
 using System.Text.Json;
 
 
@@ -34,6 +35,13 @@ namespace IdeaCanvas.Services
             return await JsonSerializer.DeserializeAsync<MindMap>(openStream);
         }
 
+        public string SerializeMap(MindMap map)
+        {
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            return JsonSerializer.Serialize(map, options);
+        }
+
+        [Obsolete]
         public async Task<bool> SaveAsync(MindMap map, string path)
         {
             try
@@ -58,6 +66,28 @@ namespace IdeaCanvas.Services
                 // Hier ggf. Fehler loggen
                 return false;
             }
+        }
+
+        public bool ExportPdf(string pngBase64, string targetPdfPath)
+        {
+            byte[] pngBytes = Convert.FromBase64String(pngBase64);
+
+            using var pngStream = new MemoryStream(pngBytes);
+            using var bitmap = SKBitmap.Decode(pngStream);
+            if (bitmap == null) return false;
+
+            using var pdfStream = File.OpenWrite(targetPdfPath);
+            using var document = SKDocument.CreatePdf(pdfStream);
+
+            using (var canvas = document.BeginPage(bitmap.Width, bitmap.Height))
+            {
+                canvas.DrawBitmap(bitmap, new SKPoint(0, 0), SKSamplingOptions.Default);
+                document.EndPage();
+            }
+
+            document.Close(); // <- HIER passiert das eigentliche Schreiben in pdfStream
+
+            return true;
         }
     }
 }

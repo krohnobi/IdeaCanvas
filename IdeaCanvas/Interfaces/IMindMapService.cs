@@ -12,6 +12,5 @@ namespace IdeaCanvas.Interfaces
         public void UpdateDescription(MindMap map, Guid nodeId, string description);
         public void UnpinNode(MindMap map, Guid nodeId);
         public void UnpinAllNodes(MindMap map);
-        public bool ExportPdf(string pngBase64, string targetPdfPath);
     }
 }

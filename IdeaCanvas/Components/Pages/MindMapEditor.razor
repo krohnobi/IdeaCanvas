@@ -17,6 +17,8 @@
                 OnResetZoom="HandleZoomResetRequested" />
 
 <MindMapCanvas @ref="canvasRef" Map="currentMap" CurveStrength="curveStrength" />
+<NewMapDialog @bind-Visible="showNewMapDialog" OnConfirm="HandleNewMapConfirmed" />
+
 
 @code {
     private MindMap? currentMap;
@@ -25,46 +27,47 @@
 
 
 
+    private bool showNewMapDialog;
+
     private void CreateMap()
     {
-        currentMap = StorageService.CreateMap("Neue Mindmap");
-        MindMapService.AddNode(currentMap, null, "Root");
+        showNewMapDialog = true; // öffnet nur den Dialog
     }
 
-    private Task OnCurveStrengthChanged(double value)
+    private void HandleNewMapConfirmed((string Title, string Topic) result)
+    {
+        currentMap = StorageService.CreateMap(result.Title);
+        MindMapService.AddNode(currentMap, null, string.IsNullOrWhiteSpace(result.Topic) ? result.Title : result.Topic);
+        // Layout übernimmt MindMapCanvas selbst, sobald es die neue Map als Parameter bekommt
+    }
+
+    private async Task OnCurveStrengthChanged(double value)
     {
         curveStrength = value;
-        return Task.CompletedTask;
+        if (canvasRef != null)
+            await canvasRef.ApplyLayout();
     }
 
     private async Task SaveMap()
     {
         try
         {
-            if (currentMap == null) throw new ArgumentNullException("Keine MindMap gefunden.");
+            if (currentMap == null)
+                throw new InvalidOperationException("Keine MindMap gefunden.");
 
+            string json = StorageService.SerializeMap(currentMap);
+            using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
 
-            string targetPath = await GetTargetPath("json");
+            var result = await FileSaver.Default.SaveAsync(
+                $"{currentMap.Title}.json", stream, CancellationToken.None);
 
-            if (string.IsNullOrEmpty(targetPath))
-            {
-                throw new Exception("Kein valider Ordner ausgewählt.");
-            }
-
-            bool success = await StorageService.SaveAsync(currentMap, targetPath);
-
-            if (!success)
-            {
-                throw new Exception("Speichern fehlgeschlagen.");
-            }
+            if (!result.IsSuccessful)
+                return; // Nutzer hat abgebrochen
 
             if (Application.Current?.MainPage != null)
             {
                 await Application.Current.MainPage.DisplayAlertAsync(
-                    "Erfolg",
-                    $"Erfolgreich gespeichert unter:\n{targetPath}",
-                    "OK"
-                );
+                    "Erfolg", $"Erfolgreich gespeichert unter:\n{result.FilePath}", "OK");
             }
         }
         catch (Exception ex)
@@ -72,10 +75,7 @@
             if (Application.Current?.MainPage != null)
             {
                 await Application.Current.MainPage.DisplayAlertAsync(
-                    "Fehler",
-                    $"Fehler beim speichern: {ex.Message}",
-                    "Schließen"
-                );
+                    "Fehler", $"Fehler beim Speichern: {ex.Message}", "Schließen");
             }
         }
     }
@@ -115,36 +115,20 @@
             await canvasRef.ExportPdf();
     }
 
-    private void HandleUnpinAllRequested()
+    private async Task HandleUnpinAllRequested()
     {
-        if (currentMap != null)
-            MindMapService.UnpinAllNodes(currentMap);
+        if (currentMap == null || canvasRef == null) return;
+
+        MindMapService.UnpinAllNodes(currentMap);
+        await canvasRef.ApplyLayout();
     }
 
     private void HandleZoomResetRequested()
     {
-        // kommt, sobald MindMapCanvas eine öffentliche ResetZoom-Methode hat
-    }
-
-    private async Task<string> GetTargetPath(string fileType)
-    {
-
-
-        var folderResult = await FolderPicker.Default.PickAsync(CancellationToken.None);
-
-        // Prüfen, ob der Nutzer abgebrochen hat
-        if (!folderResult.IsSuccessful || folderResult.Folder == null)
+        if (canvasRef != null)
         {
-            return "";
+            canvasRef.CenterOnRoot();
         }
-
-        string targetFolder = folderResult.Folder.Path;
-
-        string fileName = $"{currentMap.Title.ToLower()}_{DateTime.Now:yyyyMMdd_HHmmss}.{fileType}";
-        string fullPath = Path.Combine(targetFolder, fileName);
-
-        return fullPath;
+        
     }
-
-    
 }

@@ -1,6 +1,5 @@
 ﻿using IdeaCanvas.Interfaces;
 using IdeaCanvas.Models;
-using SkiaSharp;
 
 namespace IdeaCanvas.Services
 {
@@ -12,25 +11,6 @@ namespace IdeaCanvas.Services
             return new MindMap { Title = title };
         }
 
-
-        //private void SetAllNodesGeneration(MindMap map)
-        //{
-        //    foreach (var root in map.Nodes.Where(n => n.ParentId == null))
-        //    {
-        //        AssignGeneration(map, root, 0);
-        //    }
-        //}
-
-        //private void AssignGeneration(MindMap map, MindMapNode node, int generation)
-        //{
-        //    node.Generation = generation;
-
-        //    foreach (var child in map.Nodes.Where(n => n.ParentId == node.Id))
-        //    {
-        //        AssignGeneration(map, child, generation + 1);
-        //    }
-        //}
-
         public MindMapNode AddNode(MindMap map, Guid? parentId, string text)
         {
 
@@ -40,19 +20,27 @@ namespace IdeaCanvas.Services
             //SetAllNodesGeneration(map);
 
             var siblings = GetChildren(map, parentId);
-            MindMapNode? parent = GetNodeById(map, parentId.Value);
-            
+
+            int generation = 0;
+            if (parentId != null)
+            {
+                var parent = GetNodeById(map, parentId.Value);
+                if (parent == null)
+                    throw new InvalidOperationException($"Parent {parentId} not found.");
+                generation = parent.Generation + 1;
+            }
+
 
             MindMapNode newNode = new MindMapNode
             {
                 Id = Guid.NewGuid(),
                 Text = text,
                 ParentId = parentId,
-                Generation= parent.Generation+1
+                Generation = generation
 
             };
             newNode.SortOrder = siblings.Count == 0 ? 0 : siblings.Max(s => s.SortOrder) + 1;
-            
+
 
 
             map.Nodes.Add(newNode);
@@ -108,8 +96,8 @@ namespace IdeaCanvas.Services
 
         public void UnpinAllNodes(MindMap map)
         {
-            var pinnedNodes=map.Nodes.Where(x => x.Layout.IsPinned).ToList();
-            foreach(var pinnedNode in pinnedNodes)
+            var pinnedNodes = map.Nodes.Where(x => x.Layout.IsPinned).ToList();
+            foreach (var pinnedNode in pinnedNodes)
             {
                 pinnedNode.Layout.IsPinned = false;
             }
@@ -159,9 +147,6 @@ namespace IdeaCanvas.Services
             map.ModifiedAt = DateTime.Now;
         }
 
-
-
-
         private MindMapNode? GetNodeById(MindMap map, Guid nodeId)
         {
             return map.Nodes.FirstOrDefault(x => x.Id == nodeId);
@@ -171,13 +156,13 @@ namespace IdeaCanvas.Services
         private int GetGeneration(MindMap map, Guid nodeId)
         {
             int generation = 0;
-            MindMapNode? currentNode = GetNodeById(map,nodeId);
-            if(currentNode == null)
+            MindMapNode? currentNode = GetNodeById(map, nodeId);
+            if (currentNode == null)
                 throw new InvalidOperationException($"Node {nodeId} not found.");
 
             while (currentNode.ParentId != null)
             {
-                currentNode=GetNodeById(map, currentNode.ParentId!.Value); generation++;
+                currentNode = GetNodeById(map, currentNode.ParentId!.Value); generation++;
                 if (currentNode == null)
                     throw new InvalidOperationException("Parent node not found — Baum ist inkonsistent.");
             }
@@ -211,30 +196,5 @@ namespace IdeaCanvas.Services
             return result;
         }
 
-
-
-        public bool ExportPdf(string pngBase64, string targetPdfPath)
-        {
-            byte[] pngBytes = Convert.FromBase64String(pngBase64);
-
-            using var pngStream = new MemoryStream(pngBytes);
-            using var bitmap = SKBitmap.Decode(pngStream);
-            if (bitmap == null) return false;
-
-            using var pdfStream = File.OpenWrite(targetPdfPath);
-            using var document = SKDocument.CreatePdf(pdfStream);
-
-            using (var canvas = document.BeginPage(bitmap.Width, bitmap.Height))
-            {
-                canvas.DrawBitmap(bitmap, new SKPoint(0, 0), SKSamplingOptions.Default);
-                document.EndPage();
-            }
-
-            document.Close(); // <- HIER passiert das eigentliche Schreiben in pdfStream
-
-            return true;
-        }
-
-        
     }
 }
