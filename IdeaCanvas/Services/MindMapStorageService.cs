@@ -13,19 +13,19 @@ namespace IdeaCanvas.Services
             return new MindMap { Title = title };
         }
 
-        public async Task<bool> DeleteAsync(Guid mapId)
+        public Task<bool> DeleteAsync(Guid mapId)
         {
             string path = GetFilePath(mapId);
             if (!File.Exists(path))
             {
                 return Task.FromResult(false);
             }
-            
+
             File.Delete(path);
             return Task.FromResult(true);
         }
 
-        public async Task<List<MindMap>> LoadAllAsync()
+        public async Task<List<MindMapSummary>> LoadAllAsync()
         {
             throw new NotImplementedException();
         }
@@ -42,18 +42,13 @@ namespace IdeaCanvas.Services
             return await JsonSerializer.DeserializeAsync<MindMap>(openStream);
         }
 
-<<<<<<< HEAD
-        public async Task<bool> SaveAsync(MindMap map)
-=======
         public string SerializeMap(MindMap map)
         {
             var options = new JsonSerializerOptions { WriteIndented = true };
             return JsonSerializer.Serialize(map, options);
         }
 
-        [Obsolete]
-        public async Task<bool> SaveAsync(MindMap map, string path)
->>>>>>> d048e40b61560ad89f30db1416217ca0dd0bd66f
+        public async Task<bool> SaveAsync(MindMap map)
         {
             try
             {
@@ -81,7 +76,6 @@ namespace IdeaCanvas.Services
             }
         }
 
-<<<<<<< HEAD
         private string GetFilePath(Guid mapId)
         {
             string mapsDirectory = Path.Combine(FileSystem.AppDataDirectory, "MindMaps");
@@ -90,7 +84,6 @@ namespace IdeaCanvas.Services
             return Path.Combine(mapsDirectory, fileName);
         }
 
-=======
         public bool ExportPdf(string pngBase64, string targetPdfPath)
         {
             byte[] pngBytes = Convert.FromBase64String(pngBase64);
@@ -108,10 +101,9 @@ namespace IdeaCanvas.Services
                 document.EndPage();
             }
 
-            document.Close(); // <- HIER passiert das eigentliche Schreiben in pdfStream
+            document.Close();
 
             return true;
         }
->>>>>>> d048e40b61560ad89f30db1416217ca0dd0bd66f
     }
 }
