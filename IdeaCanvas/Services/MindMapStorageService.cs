@@ -12,52 +12,70 @@ namespace IdeaCanvas.Services
             return new MindMap { Title = title };
         }
 
-        public Task DeleteAsync(Guid mapId)
+        public async Task<bool> DeleteAsync(Guid mapId)
+        {
+            string path = GetFilePath(mapId);
+            if (!File.Exists(path))
+            {
+                return Task.FromResult(false);
+            }
+            
+            File.Delete(path);
+            return Task.FromResult(true);
+        }
+
+        public async Task<List<MindMap>> LoadAllAsync()
         {
             throw new NotImplementedException();
         }
 
-        public Task<List<MindMap>> LoadAllAsync()
+        public async Task<MindMap?> LoadAsync(Guid mapId)
         {
-            throw new NotImplementedException();
-        }
-
-        public async Task<MindMap?> LoadAsync(string path)
-        {
+            string path = GetFilePath(mapId);
             if (!File.Exists(path))
             {
                 throw new FileNotFoundException("MindMap file not found.", path);
             }
 
-            // Keine Optionen nötig, da wir das Standard-Format (PascalCase) nutzen
             using FileStream openStream = File.OpenRead(path);
             return await JsonSerializer.DeserializeAsync<MindMap>(openStream);
         }
 
-        public async Task<bool> SaveAsync(MindMap map, string path)
+        public async Task<bool> SaveAsync(MindMap map)
         {
             try
             {
-                // Nur noch die Formatierung für schöne Lesbarkeit (optional)
+                string filePath = GetFilePath(map.Id);
+
                 var options = new JsonSerializerOptions { WriteIndented = true };
 
                 // Ordner erstellen, falls er nicht existiert
-                string? directory = Path.GetDirectoryName(path);
+                string? directory = Path.GetDirectoryName(filePath);
                 if (!string.IsNullOrEmpty(directory))
                 {
                     Directory.CreateDirectory(directory);
                 }
 
-                using FileStream createStream = File.Create(path);
+                map.ModifiedAt = DateTime.Now;
+
+                using FileStream createStream = File.Create(filePath);
                 await JsonSerializer.SerializeAsync(createStream, map, options);
 
                 return true;
             }
             catch (Exception)
             {
-                // Hier ggf. Fehler loggen
                 return false;
             }
         }
+
+        private string GetFilePath(Guid mapId)
+        {
+            string mapsDirectory = Path.Combine(FileSystem.AppDataDirectory, "MindMaps");
+            string fileName = $"{mapId}.json";
+
+            return Path.Combine(mapsDirectory, fileName);
+        }
+
     }
 }
