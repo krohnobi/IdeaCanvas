@@ -280,3 +280,48 @@ tbody tr:hover td {
 tbody tr:last-child td {
     border-bottom: none;
 }
+
+
+/* ---------- NewMapDialog ---------- */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 40, 71, 0.5);
+    z-index: 2000;
+}
+
+.modal-box {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border-radius: var(--radius-md);
+    padding: 24px;
+    box-shadow: 0 8px 24px rgba(15, 40, 71, 0.25);
+    z-index: 2001;
+    width: 320px;
+}
+
+    .modal-box label {
+        display: block;
+        margin-top: 12px;
+        margin-bottom: 4px;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    .modal-box input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid var(--paper-edge);
+        border-radius: var(--radius-sm);
+    }
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+}

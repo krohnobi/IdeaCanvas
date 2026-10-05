@@ -12,24 +12,13 @@
 
 @if (contextMenuVisible && contextMenuNode != null)
 {
-    // close context menu on click
-    <div @onclick="CloseContextMenu" @oncontextmenu="CloseContextMenu"
-         style="position: fixed; inset: 0; z-index: 999;"></div>
-
-    <div class="context-menu"
-         style="position: fixed; left: @(contextMenuX)px; top: @(contextMenuY)px; z-index: 1000;">
-        <div @onclick="AddChildToContextNode">Kind hinzufügen</div>
-        <div @onclick="() => StartEdit(EditField.Text)">Text Bearbeiten</div>
-        <div @onclick="() => StartEdit(EditField.Description)">Beschreibung bearbeiten</div>
-        @if (contextMenuNode.ParentId != null)
-        {
-            <div class="menu-danger" @onclick="DeleteContextNode">Löschen</div>
-        }
-        @if (contextMenuNode.Layout.IsPinned)
-        {
-            <div @onclick="UnpinContextNode">Position lösen</div>
-        }
-    </div>
+    <NodeContextMenu Node="contextMenuNode" X="contextMenuX" Y="contextMenuY"
+                     OnAddChild="AddChildToContextNode"
+                     OnEditText="() => StartEdit(EditField.Text)"
+                     OnEditDescription="() => StartEdit(EditField.Description)"
+                     OnDelete="DeleteContextNode"
+                     OnUnpin="UnpinContextNode"
+                     OnClose="CloseContextMenu" />
 }
 
 @if (Map != null)
@@ -138,7 +127,31 @@
     [Parameter] public double CurveStrength { get; set; }
     [Parameter] public EventCallback OnMapChanged { get; set; } // Signal: "etwas hat sich geändert, bitte Layout/Speicher-Status aktualisieren"
 
-    private async Task ApplyLayout()
+    private MindMap? layoutedMap;
+
+    // Neue/geladene Map: Nodes müssen erst vermessen und gelayoutet werden, sonst haben sie Größe 0.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ReferenceEquals(Map, layoutedMap)) return;
+
+        layoutedMap = Map;
+        await ApplyLayout();
+        CenterOnRoot();
+    }
+
+    // Kamera auf die Root-Node setzen, Zoom zurück auf 100 %.
+    // Das <g> verschiebt den Ursprung bereits in die Canvas-Mitte, daher ist viewBox-Start = Root-Position.
+    public void CenterOnRoot()
+    {
+        var root = Map?.Nodes.FirstOrDefault(n => n.ParentId == null);
+
+        viewBoxWidth = CanvasWidth;
+        viewBoxHeight = CanvasHeight;
+        viewBoxX = root?.Layout.X ?? 0;
+        viewBoxY = root?.Layout.Y ?? 0;
+    }
+
+    public async Task ApplyLayout()
     {
         if (Map == null)
         {
@@ -412,7 +425,7 @@
                 throw new Exception("Kein valider Ordner ausgewählt.");
             }
 
-            bool success = MindMapService.ExportPdf(base64Png, targetPath);
+            bool success = StorageService.ExportPdf(base64Png, targetPath);
 
             if (!success)
             {

@@ -1,5 +1,6 @@
 ﻿using IdeaCanvas.Interfaces;
 using IdeaCanvas.Models;
+using SkiaSharp;
 using System.Text.Json;
 
 
@@ -41,7 +42,18 @@ namespace IdeaCanvas.Services
             return await JsonSerializer.DeserializeAsync<MindMap>(openStream);
         }
 
+<<<<<<< HEAD
         public async Task<bool> SaveAsync(MindMap map)
+=======
+        public string SerializeMap(MindMap map)
+        {
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            return JsonSerializer.Serialize(map, options);
+        }
+
+        [Obsolete]
+        public async Task<bool> SaveAsync(MindMap map, string path)
+>>>>>>> d048e40b61560ad89f30db1416217ca0dd0bd66f
         {
             try
             {
@@ -69,6 +81,7 @@ namespace IdeaCanvas.Services
             }
         }
 
+<<<<<<< HEAD
         private string GetFilePath(Guid mapId)
         {
             string mapsDirectory = Path.Combine(FileSystem.AppDataDirectory, "MindMaps");
@@ -77,5 +90,28 @@ namespace IdeaCanvas.Services
             return Path.Combine(mapsDirectory, fileName);
         }
 
+=======
+        public bool ExportPdf(string pngBase64, string targetPdfPath)
+        {
+            byte[] pngBytes = Convert.FromBase64String(pngBase64);
+
+            using var pngStream = new MemoryStream(pngBytes);
+            using var bitmap = SKBitmap.Decode(pngStream);
+            if (bitmap == null) return false;
+
+            using var pdfStream = File.OpenWrite(targetPdfPath);
+            using var document = SKDocument.CreatePdf(pdfStream);
+
+            using (var canvas = document.BeginPage(bitmap.Width, bitmap.Height))
+            {
+                canvas.DrawBitmap(bitmap, new SKPoint(0, 0), SKSamplingOptions.Default);
+                document.EndPage();
+            }
+
+            document.Close(); // <- HIER passiert das eigentliche Schreiben in pdfStream
+
+            return true;
+        }
+>>>>>>> d048e40b61560ad89f30db1416217ca0dd0bd66f
     }
 }
