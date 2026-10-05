@@ -1,6 +1,7 @@
 ﻿using IdeaCanvas.Interfaces;
 using IdeaCanvas.Models;
 using SkiaSharp;
+using System.IO.Pipelines;
 using System.Text.Json;
 
 
@@ -27,7 +28,29 @@ namespace IdeaCanvas.Services
 
         public async Task<List<MindMapSummary>> LoadAllAsync()
         {
-            throw new NotImplementedException();
+            string mapsDirectory = GetMapsDirectory();
+            if (!Directory.Exists(mapsDirectory))
+            {
+                return new List<MindMapSummary>();
+            }
+
+            string[] files = Directory.GetFiles(mapsDirectory, "*.json");
+            List<MindMapSummary> summaries = new();
+            foreach (string filePath in files)
+            {
+                try
+                {
+                    byte[] content = await File.ReadAllBytesAsync(filePath);
+                    var mindMap = JsonSerializer.Deserialize<MindMap>(content);
+                    if (mindMap == null)
+                    {
+                        continue;
+                    }
+                    summaries.Add(new MindMapSummary { Id = mindMap.Id, Title = mindMap.Title, CreatedAt = mindMap.CreatedAt, ModifiedAt = mindMap.ModifiedAt, NodeCount = mindMap.Nodes.Count });
+                }
+                catch (Exception) { }
+            }
+            return summaries.OrderByDescending(item => item.ModifiedAt).ToList();
         }
 
         public async Task<MindMap?> LoadAsync(Guid mapId)
@@ -78,10 +101,15 @@ namespace IdeaCanvas.Services
 
         private string GetFilePath(Guid mapId)
         {
-            string mapsDirectory = Path.Combine(FileSystem.AppDataDirectory, "MindMaps");
+            string mapsDirectory = GetMapsDirectory()
             string fileName = $"{mapId}.json";
 
             return Path.Combine(mapsDirectory, fileName);
+        }
+
+        private string GetMapsDirectory()
+        {
+            return Path.Combine(FileSystem.AppDataDirectory, "MindMaps");
         }
 
         public bool ExportPdf(string pngBase64, string targetPdfPath)

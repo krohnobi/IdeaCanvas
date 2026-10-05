@@ -55,29 +55,35 @@
             if (currentMap == null)
                 throw new InvalidOperationException("Keine MindMap gefunden.");
 
-            string json = StorageService.SerializeMap(currentMap);
-            using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+            bool success = await StorageService.SaveAsync(currentMap);
 
-            var result = await FileSaver.Default.SaveAsync(
-                $"{currentMap.Title}.json", stream, CancellationToken.None);
-
-            if (!result.IsSuccessful)
-                return; // Nutzer hat abgebrochen
-
-            if (Application.Current?.MainPage != null)
+            if (success)
             {
-                await Application.Current.MainPage.DisplayAlertAsync(
-                    "Erfolg", $"Erfolgreich gespeichert unter:\n{result.FilePath}", "OK");
+                await ShowMessageAsync("Erfolg", "Erfolgreich gespeichert.", "OK");
+            }
+            else
+            {
+                await ShowMessageAsync("Fehler", "Speichern fehlgeschlagen.", "Schließen");
             }
         }
         catch (Exception ex)
         {
-            if (Application.Current?.MainPage != null)
-            {
-                await Application.Current.MainPage.DisplayAlertAsync(
-                    "Fehler", $"Fehler beim Speichern: {ex.Message}", "Schließen");
-            }
+
+            await ShowMessageAsync("Fehler", $"Fehler beim Speichern: {ex.Message}", "Schließen");
         }
+    }
+
+    private async Task ShowMessageAsync(string title, string message, string buttonText)
+    {
+        Window? window = Application.Current?.Windows.FirstOrDefault();
+        Page? page = window?.Page;
+
+        if (page == null)
+        {
+            return;
+        }
+
+        await page.DisplayAlertAsync(title, message, buttonText);
     }
 
     private async Task LoadMap()
@@ -89,7 +95,7 @@
             if (fileResult == null)
                 return; // abgebrochen, kein Fehler
 
-            currentMap = await StorageService.LoadAsync(fileResult.FullPath);
+            currentMap = await StorageService.LoadAsync(mapId);
 
             if (currentMap == null)
             {
@@ -129,6 +135,6 @@
         {
             canvasRef.CenterOnRoot();
         }
-        
+
     }
 }
