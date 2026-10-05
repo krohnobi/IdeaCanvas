@@ -28,18 +28,34 @@ Statt eines klassischen "Root in der Mitte, Äste strikt links/rechts"-Layouts (
 
 ```
 IdeaCanvas/
+├─ Components/
+│  ├─ Layout/
+│  │  └─ MainLayout.razor      — App-Rahmen
+│  ├─ Pages/
+│  │  ├─ Home.razor            — Startseite
+│  │  ├─ MindMapEditor.razor   — Editor-Seite, setzt Canvas, Toolbar und Dialoge zusammen
+│  │  └─ NotFound.razor        — Fallback bei unbekannter Route
+│  ├─ MindMapCanvas.razor      — SVG-Rendering, Interaktion, Pan/Zoom
+│  ├─ MindMapToolbar.razor     — Werkzeugleiste (Neu, Speichern, Laden, …)
+│  ├─ NewMapDialog.razor       — Dialog zum Anlegen einer neuen Mindmap
+│  ├─ NodeContextMenu.razor    — Rechtsklick-Menü für Nodes
+│  ├─ Routes.razor             — Routing
+│  └─ _Imports.razor           — globale usings für Komponenten
+├─ DTOs/
+├─ Helpers/
+├─ Interfaces/
 ├─ Models/
-│  ├─ MindMap.cs          — Container: Titel, Nodes-Liste
-│  ├─ MindMapNode.cs       — Text, Description, ParentId, Layout
-│  ├─ NodeLayout.cs        — X, Y, Width, Height, IsPinned
-│  └─ EdgeLayout.cs        — gesampelte Punktliste je Kante (MSAGL-unabhängig)
+│  ├─ MindMap.cs               — Container: Titel, Nodes-Liste
+│  ├─ MindMapNode.cs           — Text, Description, ParentId, Layout
+│  ├─ NodeLayout.cs            — X, Y, Width, Height, IsPinned
+│  └─ EdgeLayout.cs            — gesampelte Punktliste je Kante (MSAGL-unabhängig)
 ├─ Services/
-│  ├─ MindMapService.cs    — CRUD auf dem Node-Baum (Add/Remove/Move/Reorder)
+│  ├─ MindMapService.cs        — CRUD auf dem Node-Baum (Add/Remove/Move/Reorder)
 │  ├─ MindMapStorageService.cs — Speichern/Laden als JSON
-│  └─ LayoutService.cs     — MSAGL-Integration: Graph aufbauen, MDS anwenden,
-│                             Ergebnis zurückschreiben, gepinnte Bereiche korrigieren
-└─ Pages/
-   └─ Debug.razor          — SVG-Rendering, Interaktion, Pan/Zoom
+│  └─ LayoutService.cs         — MSAGL-Integration: Graph aufbauen, MDS anwenden,
+│                                 Ergebnis zurückschreiben, gepinnte Bereiche korrigieren
+├─ wwwroot/                    — CSS, statische Dateien
+└─ MauiProgram.cs              — App-Start, DI-Registrierung
 ```
 
 **Bewusste Design-Entscheidung:** Die Mindmap ist intern eine **flache Liste** von Nodes mit `ParentId` (wie eine Datenbank-Tabelle mit Self-Referencing-Key), keine verschachtelte `Children`-Baumstruktur — vereinfacht CRUD-Operationen und macht `LayoutService` unabhängig von Rekursion.
@@ -58,11 +74,11 @@ dotnet build -t:Run -f net8.0-windows10.0.19041.0   # oder Zielplattform nach Wa
 ## Roadmap
 
 - [ ] Node per Rechtsklick auf leere Canvas-Fläche erstellen (Verknüpfung mit nächstgelegenem Node)
-- [ ] Delete-Funktion im Kontextmenü fertigstellen
-- [ ] Plattformübergreifende Persistenz (`FileSystem.AppDataDirectory` statt festem Desktop-Pfad)
+- [x] Delete-Funktion im Kontextmenü fertigstellen
+- [ ] 🔄Plattformübergreifende Persistenz (`FileSystem.AppDataDirectory` statt festem Desktop-Pfad)
 - [ ] Übersichtsseite für mehrere gespeicherte Mindmaps
-- [ ] PNG-Export des sichtbaren Ausschnitts
-- [ ] Von Debug-Seite zu polierter App-UI
+- [x] PDF-Export des sichtbaren Ausschnitts
+- [ ] 🔄Von Debug-Seite zu polierter App-UI
 
 ## Lizenz
 
