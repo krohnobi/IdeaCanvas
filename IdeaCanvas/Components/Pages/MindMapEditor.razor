@@ -1,17 +1,18 @@
-﻿@page "/mindmap"
-@using CommunityToolkit.Maui.Storage
+﻿@page "/map/{MapId:guid}"
+@using System.Text.Json
 @using IdeaCanvas.Interfaces
 @using IdeaCanvas.Models
 
 @inject IMindMapService MindMapService
 @inject IMindMapStorageService StorageService
+@inject NavigationManager Navigation
 
 <MindMapToolbar Map="currentMap"
                 CurveStrength="curveStrength"
                 CurveStrengthChanged="OnCurveStrengthChanged"
                 OnCreate="CreateMap"
+                OnBackToOverview="BackToOverview"
                 OnSave="SaveMap"
-                OnLoad="LoadMap"
                 OnExportPdf="HandleExportRequested"
                 OnUnpinAll="HandleUnpinAllRequested"
                 OnResetZoom="HandleZoomResetRequested" />
@@ -21,6 +22,9 @@
 
 
 @code {
+    [Parameter]
+    public Guid MapId { get; set; }
+
     private MindMap? currentMap;
     private double curveStrength = 0;
     private MindMapCanvas? canvasRef;
@@ -28,6 +32,49 @@
 
 
     private bool showNewMapDialog;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            var loadedMap = await StorageService.LoadAsync(MapId);
+            if (loadedMap == null)
+            {
+                await ShowMessageAsync("Fehler", "Die Mindmap-Datei wurde nicht gefunden.", "OK");
+                Navigation.NavigateTo("/");
+                return;
+            }
+
+            currentMap = loadedMap;
+        }
+        catch (JsonException)
+        {
+            await ShowMessageAsync("Fehler", "Die Mindmap-Datei ist beschädigt.", "OK");
+            Navigation.NavigateTo("/");
+        }
+        catch (Exception)
+        {
+            await ShowMessageAsync("Fehler", "Die Mindmap konnte nicht geladen werden.", "OK");
+            Navigation.NavigateTo("/");
+        }
+
+    }
+
+    private async Task BackToOverview()
+    {
+        if (currentMap != null)
+        {
+            bool saved = await StorageService.SaveAsync(currentMap);
+
+            if (!saved)
+            {
+                await ShowMessageAsync("Fehler", "Speichern fehlgeschlagen.", "OK");
+                return;
+            }
+        }
+
+        Navigation.NavigateTo("/");
+    }
 
     private void CreateMap()
     {
@@ -84,35 +131,6 @@
         }
 
         await page.DisplayAlertAsync(title, message, buttonText);
-    }
-
-    private async Task LoadMap()
-    {
-        try
-        {
-            var fileResult = await FilePicker.Default.PickAsync();
-
-            if (fileResult == null)
-                return; // abgebrochen, kein Fehler
-
-            currentMap = await StorageService.LoadAsync(mapId);
-
-            if (currentMap == null)
-            {
-                throw new Exception("Laden fehlgeschlagen.");
-            }
-        }
-        catch (Exception ex)
-        {
-            if (Application.Current?.MainPage != null)
-            {
-                await Application.Current.MainPage.DisplayAlertAsync(
-                    "Fehler",
-                    $"Fehler beim Laden: {ex.Message}",
-                    "Schließen"
-                );
-            }
-        }
     }
 
     private async Task HandleExportRequested()

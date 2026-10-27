@@ -49,6 +49,7 @@ namespace IdeaCanvas.Services
                     summaries.Add(new MindMapSummary { Id = mindMap.Id, Title = mindMap.Title, CreatedAt = mindMap.CreatedAt, ModifiedAt = mindMap.ModifiedAt, NodeCount = mindMap.Nodes.Count });
                 }
                 catch (Exception) { }
+                
             }
             return summaries.OrderByDescending(item => item.ModifiedAt).ToList();
         }
@@ -58,7 +59,7 @@ namespace IdeaCanvas.Services
             string path = GetFilePath(mapId);
             if (!File.Exists(path))
             {
-                throw new FileNotFoundException("MindMap file not found.", path);
+                return null;
             }
 
             using FileStream openStream = File.OpenRead(path);
@@ -101,13 +102,13 @@ namespace IdeaCanvas.Services
 
         private string GetFilePath(Guid mapId)
         {
-            string mapsDirectory = GetMapsDirectory()
+            string mapsDirectory = GetMapsDirectory();
             string fileName = $"{mapId}.json";
 
             return Path.Combine(mapsDirectory, fileName);
         }
 
-        private string GetMapsDirectory()
+        public string GetMapsDirectory()
         {
             return Path.Combine(FileSystem.AppDataDirectory, "MindMaps");
         }
@@ -132,6 +133,16 @@ namespace IdeaCanvas.Services
             document.Close();
 
             return true;
+        }
+
+        public async Task<bool> RenameAsync(Guid mapId, string newTitle)
+        {
+            MindMap? map = await LoadAsync(mapId);
+            if (map == null) throw new FileNotFoundException("Die Mindmap wurde nicht gefunden.", GetFilePath(mapId));
+
+            map.Title = newTitle.Trim();
+
+            return await SaveAsync(map);
         }
     }
 }

@@ -88,7 +88,9 @@ h1:focus {
     height: 100%;
     min-height: 600px;
     overflow: hidden;
-    background-color: #f5f6f8;
+    background-color: var(--app-accent-soft);
+    background-image: linear-gradient(rgba(47, 93, 138, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(47, 93, 138, 0.08) 1px, transparent 1px);
+    background-size: 24px 24px;
 }
 
 .mindmap-viewport {

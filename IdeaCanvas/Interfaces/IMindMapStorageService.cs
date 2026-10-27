@@ -11,5 +11,7 @@ namespace IdeaCanvas.Interfaces
         Task<MindMap?> LoadAsync(Guid mapId);
         Task<List<MindMapSummary>> LoadAllAsync();
         bool ExportPdf(string pngBase64, string targetPdfPath);
+        string GetMapsDirectory();
+        Task<bool> RenameAsync(Guid mapId, string newTitle);
     }
 }

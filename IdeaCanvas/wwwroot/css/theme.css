@@ -1,0 +1,20 @@
+/* ==============================
+   IdeaCanvas – gemeinsame Farben
+   ============================== */
+
+:root {
+    --app-accent: #2f5d8a;
+    --app-accent-hover: #244a6f;
+    --app-accent-soft: #e8eff7;
+    --app-background: #f4f5f7;
+    --app-surface: #ffffff;
+    --app-text: #1f2933;
+    --app-text-muted: #6b7280;
+    --app-border: #e2e0da;
+    --app-danger: #c0392b;
+    --app-danger-soft: #fbeaea;
+    --app-radius-sm: 6px;
+    --app-radius-md: 10px;
+    --app-shadow: 0 1px 2px rgba(15, 40, 71, 0.06), 0 4px 12px rgba(15, 40, 71, 0.06);
+    --app-font: system-ui, -apple-system, "Segoe UI", sans-serif;
+}

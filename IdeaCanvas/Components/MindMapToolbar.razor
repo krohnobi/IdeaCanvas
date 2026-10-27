@@ -1,25 +1,39 @@
 ﻿@* MindMapToolbar.razor *@
 @using IdeaCanvas.Models
 
-<div class="toolbar">
-    <button class="primary" @onclick="OnNewMapRequested">Neue MindMap erstellen</button>
-    <button @onclick="OnLoadClicked">Load Map</button>
+<div class="editor-toolbar">
+
+    <div class="editor-toolbar-left">
+        <button class="editor-button ghost" @onclick="OnBackToOverviewClicked">← Übersicht</button>
+
+        @if (Map != null)
+        {
+            <span class="editor-toolbar-title" title="@Map.Title">@Map.Title</span>
+        }
+    </div>
+
     @if (Map != null)
     {
-        <div class="divider"></div>
-        <div class="curve-control">
-            <label>Curve Strength: @CurveStrength</label>
-            <input type="range" min="-0.3" max="0.3" step="0.1"
-                   value="@CurveStrength"
-                   @oninput="OnCurveStrengthChanged" />
+        <div class="editor-toolbar-right">
+            <div class="editor-curve-control">
+                <label>Kurven</label>
+                <input type="range" min="-0.3" max="0.3" step="0.1"
+                       value="@CurveStrength"
+                       @oninput="OnCurveStrengthChanged" />
+            </div>
+
+            <div class="editor-divider"></div>
+
+            <button class="editor-button secondary" @onclick="OnUnpinAllClicked">📌 Pins lösen</button>
+            <button class="editor-button secondary" @onclick="OnResetZoomClicked">🎯 Zentrieren</button>
+
+            <div class="editor-divider"></div>
+
+            <button class="editor-button secondary" @onclick="OnExportPdfClicked">📄 PDF</button>
+            <button class="editor-button primary" @onclick="OnSaveClicked">💾 Speichern</button>
         </div>
-        <div class="divider"></div>
-        <button @onclick="OnSaveClicked">Save Map</button>
-        <button @onclick="OnExportPdfClicked">Export als PDF</button>
-        <div class="divider"></div>
-        <button @onclick="OnUnpinAllClicked">Alle Pins lösen</button>
-        <button @onclick="OnResetZoomClicked">Zoom zurücksetzen</button>
     }
+
 </div>
 
 @code {
@@ -29,14 +43,14 @@
 
     [Parameter] public EventCallback OnCreate { get; set; }
     [Parameter] public EventCallback OnSave { get; set; }
-    [Parameter] public EventCallback OnLoad { get; set; }
+    [Parameter] public EventCallback OnBackToOverview { get; set; }
     [Parameter] public EventCallback OnExportPdf { get; set; }
     [Parameter] public EventCallback OnUnpinAll { get; set; }
     [Parameter] public EventCallback OnResetZoom { get; set; }
 
     private Task OnNewMapRequested() => OnCreate.InvokeAsync();
     private Task OnSaveClicked() => OnSave.InvokeAsync();
-    private Task OnLoadClicked() => OnLoad.InvokeAsync();
+    private Task OnBackToOverviewClicked() => OnBackToOverview.InvokeAsync();
     private Task OnExportPdfClicked() => OnExportPdf.InvokeAsync();
     private Task OnUnpinAllClicked() => OnUnpinAll.InvokeAsync();
     private Task OnResetZoomClicked() => OnResetZoom.InvokeAsync();

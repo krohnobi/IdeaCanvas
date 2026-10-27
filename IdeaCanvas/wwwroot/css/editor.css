@@ -1,0 +1,99 @@
+/* ==============================
+   Editor
+   ============================== */
+
+.editor-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    background: var(--app-surface);
+    border-bottom: 1px solid var(--app-border);
+    font-family: var(--app-font);
+    color: var(--app-text);
+}
+
+.editor-toolbar-left,
+.editor-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.editor-toolbar-title {
+    max-width: 320px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.editor-divider {
+    width: 1px;
+    height: 24px;
+    margin: 0 4px;
+    background: var(--app-border);
+}
+
+/* ---------- Buttons ---------- */
+
+.editor-button {
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+    .editor-button.primary {
+        background: var(--app-accent);
+        border: 1px solid var(--app-accent);
+        color: white;
+    }
+
+        .editor-button.primary:hover {
+            background: var(--app-accent-hover);
+            border-color: var(--app-accent-hover);
+        }
+
+    .editor-button.secondary {
+        background: var(--app-surface);
+        border: 1px solid var(--app-border);
+        color: var(--app-text);
+    }
+
+        .editor-button.secondary:hover {
+            border-color: var(--app-accent);
+            color: var(--app-accent);
+        }
+
+    .editor-button.ghost {
+        background: none;
+        border: 1px solid transparent;
+        color: var(--app-text-muted);
+    }
+
+        .editor-button.ghost:hover {
+            background: var(--app-accent-soft);
+            color: var(--app-accent);
+        }
+
+/* ---------- Kurven-Regler ---------- */
+
+.editor-curve-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--app-text-muted);
+    font-size: 0.85rem;
+}
+
+    .editor-curve-control input[type="range"] {
+        width: 110px;
+        accent-color: var(--app-accent);
+    }

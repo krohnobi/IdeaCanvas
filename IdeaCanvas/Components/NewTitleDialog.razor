@@ -1,0 +1,53 @@
+﻿@if (Visible)
+{
+    <div class="modal-overlay" @onclick="Cancel"></div>
+    <div class="modal-box">
+        <h3>Titel ändern</h3>
+        <label>neuer Titel</label>
+        <input @bind="title" @bind:event="oninput" placeholder="z. B. Projektplanung" />
+
+        <div class="modal-actions">
+            <button @onclick="Cancel">Abbrechen</button>
+            <button class="primary" @onclick="Confirm" disabled="@string.IsNullOrWhiteSpace(title)">Umbenennen</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string CurrentTitle { get; set; } = "";
+    public bool wasVisible { get; set; }
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public EventCallback<string> OnConfirm { get; set; }
+
+    private string title = "";
+
+    protected override void OnParametersSet()
+    {
+        bool justOpened = Visible && !wasVisible;
+
+        if (justOpened)
+        {
+            title = CurrentTitle;
+        }
+
+        wasVisible = Visible;
+    }
+
+    private async Task Confirm()
+    {
+        if (string.IsNullOrWhiteSpace(title)) return;
+
+        await OnConfirm.InvokeAsync(title);
+        await Close();
+    }
+
+    private async Task Cancel() => await Close();
+
+    private async Task Close()
+    {
+        title = "";
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+}

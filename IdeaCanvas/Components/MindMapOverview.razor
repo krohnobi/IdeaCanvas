@@ -1,0 +1,332 @@
+﻿@page "/"
+@using System.Globalization
+@using IdeaCanvas.Interfaces
+@using IdeaCanvas.Models
+
+@inject IMindMapStorageService StorageService
+@inject IMindMapService MindMapService
+@inject NavigationManager Navigation
+
+<NewMapDialog @bind-Visible="showNewMapDialog" OnConfirm="HandleNewMapConfirmed" />
+<NewTitleDialog @bind-Visible="showNewTitleDialog" CurrentTitle="@renameTitle" OnConfirm="HandleRenameConfirmed" />
+
+<div class="overview">
+
+    <header class="overview-header">
+        <div>
+            <h1 class="overview-title">Meine Mindmaps</h1>
+            @if (!isLoading)
+            {
+                <p class="overview-subtitle">@summaries.Count gespeichert</p>
+            }
+        </div>
+
+        <div class="overview-actions">
+            <button class="overview-button secondary" @onclick="OpenStorageFolder">📁 Speicherordner</button>
+            <button class="overview-button primary" @onclick="CreateMap">+ Neue Mindmap</button>
+        </div>
+    </header>
+
+    @if (!isLoading && summaries.Count > 0)
+    {
+        <div class="overview-search">
+            <span class="overview-search-icon">🔍</span>
+            <input type="text"
+                   placeholder="Mindmaps durchsuchen…"
+                   @bind="searchText"
+                   @bind:event="oninput" />
+        </div>
+    }
+
+    @if (isLoading)
+    {
+        <div class="overview-loading">
+            <div class="overview-spinner"></div>
+            <span>Mindmaps werden geladen…</span>
+        </div>
+    }
+    else if (summaries.Count == 0)
+    {
+        <div class="overview-empty">
+            <div class="overview-empty-icon">💡</div>
+            <h2>Noch keine Mindmaps</h2>
+            <p>Leg deine erste Mindmap an und sammle deine Ideen.</p>
+            <button class="overview-button primary" @onclick="CreateMap">+ Erste Mindmap erstellen</button>
+        </div>
+    }
+    else
+    {
+        List<MindMapSummary> visibleSummaries = GetVisibleSummaries();
+
+        if (visibleSummaries.Count == 0)
+        {
+            <p class="overview-no-results">Keine Mindmap gefunden für „@searchText“.</p>
+        }
+        else
+        {
+            <div class="overview-grid">
+                @foreach (MindMapSummary summary in visibleSummaries)
+                {
+                    <div class="map-card"
+                         @onclick="() => OpenMap(summary.Id)"
+                         @oncontextmenu="(MouseEventArgs e) => OpenContextMenu(e, summary)"
+                         @oncontextmenu:preventDefault="true">
+
+                        <div class="map-card-preview">
+                            <svg class="map-card-illustration" viewBox="0 0 120 60" aria-hidden="true">
+                                <line x1="60" y1="30" x2="22" y2="14" />
+                                <line x1="60" y1="30" x2="24" y2="48" />
+                                <line x1="60" y1="30" x2="98" y2="15" />
+                                <line x1="60" y1="30" x2="96" y2="47" />
+                                <circle class="root" cx="60" cy="30" r="9" />
+                                <circle cx="22" cy="14" r="5" />
+                                <circle cx="24" cy="48" r="5" />
+                                <circle cx="98" cy="15" r="5" />
+                                <circle cx="96" cy="47" r="5" />
+                            </svg>
+
+                            <button class="map-card-more"
+                                    title="Optionen"
+                                    @onclick="(MouseEventArgs e) => OpenContextMenu(e, summary)"
+                                    @onclick:stopPropagation="true">
+                                ⋯
+                            </button>
+                        </div>
+
+                        <div class="map-card-body">
+                            <h2 class="map-card-title" title="@summary.Title">@summary.Title</h2>
+
+                            <div class="map-card-meta">
+                                <span>🕒 @summary.ModifiedAt.ToString("dd.MM.yyyy, HH:mm")</span>
+                                <span>● @FormatNodeCount(summary.NodeCount)</span>
+                            </div>
+
+                            <div class="map-card-created">
+                                Erstellt am @summary.CreatedAt.ToString("dd.MM.yyyy")
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+
+    @if (contextMenuSummary != null)
+    {
+        <div class="context-menu-backdrop"
+             @onclick="CloseContextMenu"
+             @oncontextmenu="CloseContextMenu"
+             @oncontextmenu:preventDefault="true"></div>
+
+        <div class="context-menu" style="left: @(contextMenuX.ToString(CultureInfo.InvariantCulture))px; top: @(contextMenuY.ToString(CultureInfo.InvariantCulture))px;">
+            <button @onclick="StartRename">✏️ Umbenennen</button>
+            <button class="danger" @onclick="DeleteMap">🗑️ Löschen</button>
+        </div>
+    }
+
+</div>
+
+
+@code {
+    private MindMapSummary? contextMenuSummary;
+    double contextMenuX;
+    double contextMenuY;
+
+    private bool showNewTitleDialog;
+    string renameTitle = "";
+    private MindMapSummary? summaryToRename;
+
+    private bool showNewMapDialog;
+    private List<MindMapSummary> summaries = new();
+    private bool isLoading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        summaries = await StorageService.LoadAllAsync();
+        isLoading = false;
+    }
+
+    private void OpenMap(Guid mapId)
+    {
+        Navigation.NavigateTo($"/map/{mapId}");
+    }
+
+    private void CreateMap()
+    {
+        showNewMapDialog = true; // öffnet nur den Dialog
+    }
+
+    private void OpenContextMenu(MouseEventArgs e, MindMapSummary summary)
+    {
+        contextMenuX = e.ClientX;
+        contextMenuY = e.ClientY;
+        contextMenuSummary = summary;
+    }
+
+    private void CloseContextMenu()
+    {
+        contextMenuSummary = null;
+    }
+
+    private void StartRename()
+    {
+        if (contextMenuSummary is null)
+        {
+            return;
+        }
+        summaryToRename = contextMenuSummary;
+        renameTitle = summaryToRename.Title;
+
+        CloseContextMenu();
+        showNewTitleDialog = true;
+    }
+
+    private async Task DeleteMap()
+    {
+        if (contextMenuSummary == null)
+        {
+            return;
+        }
+
+        MindMapSummary? summaryToDelete = contextMenuSummary;
+        CloseContextMenu();
+        bool confirmed = await ShowConfirmAsync("Löschen", $"Möchtest du „{summaryToDelete.Title}“ wirklich löschen?", "Löschen", "Abbrechen");
+
+        if (confirmed == false)
+        {
+            return;
+        }
+
+        try
+        {
+            bool deleted=await StorageService.DeleteAsync(summaryToDelete.Id);
+            if (!deleted)
+            {
+                await ShowMessageAsync("Fehler", "Löschen fehlgeschlagen","OK");
+                return;
+            }
+
+            await ReloadSummariesAsync();
+        }
+        catch (Exception ex)
+        {
+            await ShowMessageAsync("Fehler", ex.Message,"OK");
+        }
+    }
+
+
+    private void OpenStorageFolder()
+    {
+        string directoryPath = StorageService.GetMapsDirectory();
+        Directory.CreateDirectory(directoryPath);
+        System.Diagnostics.Process.Start("explorer.exe", directoryPath);
+    }
+
+    private async Task HandleNewMapConfirmed((string Title, string Topic) result)
+    {
+        try
+        {
+            var newMap = StorageService.CreateMap(result.Title);
+            MindMapService.AddNode(newMap, null, string.IsNullOrWhiteSpace(result.Topic) ? result.Title : result.Topic);
+
+            bool saved = await StorageService.SaveAsync(newMap);
+
+            if (!saved)
+            {
+                await ShowMessageAsync("Fehler", "Mindmap konnte nicht gespeichert werden", "OK");
+                return;
+            }
+
+            OpenMap(newMap.Id);
+        }
+        catch (Exception ex)
+        {
+            await ShowMessageAsync("Fehler", $"Fehler beim Erstellen: {ex.Message}", "OK");
+        }
+    }
+
+    private async Task HandleRenameConfirmed(string newTitle)
+    {
+        if (summaryToRename is null)
+        {
+            return;
+        }
+
+        try
+        {
+            bool renamed = await StorageService.RenameAsync(summaryToRename.Id, newTitle);
+
+            if (!renamed)
+            {
+                await ShowMessageAsync("Fehler", "Umbenennen fehlgeschlagen.", "OK");
+            }
+            summaryToRename = null;
+            await ReloadSummariesAsync();
+        }
+        catch (Exception ex)
+        {
+            await ShowMessageAsync("Fehler", ex.Message, "OK");
+        }
+    }
+
+    private async Task ReloadSummariesAsync()
+    {
+        summaries = await StorageService.LoadAllAsync();
+    }
+
+    private async Task ShowMessageAsync(string title, string message, string buttonText)
+    {
+        Window? window = Application.Current?.Windows.FirstOrDefault();
+        Page? page = window?.Page;
+
+        if (page == null)
+        {
+            return;
+        }
+
+        await page.DisplayAlertAsync(title, message, buttonText);
+    }
+
+    private async Task<bool> ShowConfirmAsync(string title, string message, string acceptText, string cancelText)
+    {
+        Window? window = Application.Current?.Windows.FirstOrDefault();
+        Page? page = window?.Page;
+
+        if (page == null)
+        {
+            return false;
+        }
+
+        bool confirmed = await page.DisplayAlertAsync(title, message, acceptText, cancelText);
+        return confirmed;
+    }
+
+    private string searchText = "";
+
+    private List<MindMapSummary> GetVisibleSummaries()
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            return summaries;
+        }
+
+        string searchTerm = searchText.Trim();
+
+        List<MindMapSummary> matchingSummaries = summaries
+            .Where(summary => summary.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        return matchingSummaries;
+    }
+
+    private string FormatNodeCount(int count)
+    {
+        if (count == 1)
+        {
+            return "1 Notiz";
+        }
+
+        return $"{count} Notizen";
+    }
+}

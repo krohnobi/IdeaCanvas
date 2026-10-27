@@ -1,28 +1,16 @@
-/* IdeaCanvas — Debug View
-   Blueprint / Zeichentisch-Ästhetik: Raster-Canvas, Karteikarten-Nodes, Kupfer-Akzent. */
-
-:root {
-    --ink-deep: #0f2847;
-    --ink-mid: #1c3a5e;
-    --grid-line: rgba(255, 255, 255, 0.06);
-    --paper: #f4f1ea;
-    --paper-edge: #d8d2c4;
-    --copper: #c17a4d;
-    --copper-dark: #a5623a;
-    --text-primary: #1c2733;
-    --text-muted: #6b7a8d;
-    --danger: #b3492f;
-    --radius-sm: 4px;
-    --radius-md: 8px;
-    --shadow-card: 0 1px 2px rgba(15, 40, 71, 0.08), 0 4px 12px rgba(15, 40, 71, 0.06);
-    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
-}
+/* ==============================
+   IdeaCanvas – Canvas, Nodes, Dialoge, Debug-Seite
+   Farben kommen aus theme.css
+   ============================== */
 
 body {
     margin: 0;
-    background: #e9e5db;
-    color: var(--text-primary);
+    background: var(--app-background);
+    color: var(--app-text);
+    font-family: var(--app-font);
 }
+
+/* ---------- Debug-Seite ---------- */
 
 .idea-canvas-page {
     max-width: 1240px;
@@ -30,219 +18,222 @@ body {
     padding: 32px 24px 64px;
 }
 
-.idea-canvas-page h1 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    color: var(--ink-deep);
-    margin: 0 0 4px;
-}
+    .idea-canvas-page h1 {
+        margin: 0 0 4px;
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: var(--app-text);
+    }
 
-.idea-canvas-page .subtitle {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    margin: 0 0 24px;
-}
+    .idea-canvas-page .subtitle {
+        margin: 0 0 24px;
+        color: var(--app-text-muted);
+        font-size: 0.9rem;
+    }
 
-/* ---------- Toolbar ---------- */
+/* ---------- Alte Toolbar (Debug-Seite) ---------- */
 
 .toolbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 10px;
-    flex-wrap: wrap;
-    background: #fff;
-    border: 1px solid var(--paper-edge);
-    border-radius: var(--radius-md);
-    padding: 12px 16px;
     margin-bottom: 16px;
-    box-shadow: var(--shadow-card);
+    padding: 12px 16px;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-md);
+    box-shadow: var(--app-shadow);
 }
 
-.toolbar .divider {
-    width: 1px;
-    height: 24px;
-    background: var(--paper-edge);
-    margin: 0 4px;
-}
-
-button {
-    font-family: inherit;
-    font-size: 0.85rem;
-    font-weight: 500;
-    padding: 8px 14px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--paper-edge);
-    background: #fff;
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: background-color 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
-}
-
-button:hover {
-    background: #faf8f3;
-    border-color: var(--copper);
-}
-
-button:active {
-    transform: translateY(1px);
-}
-
-button.primary {
-    background: var(--ink-deep);
-    border-color: var(--ink-deep);
-    color: #fff;
-}
-
-button.primary:hover {
-    background: var(--ink-mid);
-    border-color: var(--ink-mid);
-}
-
-button.danger {
-    color: var(--danger);
-    border-color: transparent;
-}
-
-button.danger:hover {
-    background: rgba(179, 73, 47, 0.08);
-    border-color: var(--danger);
-}
+    .toolbar .divider {
+        width: 1px;
+        height: 24px;
+        margin: 0 4px;
+        background: var(--app-border);
+    }
 
 .curve-control {
     display: flex;
     align-items: center;
     gap: 8px;
+    color: var(--app-text-muted);
     font-size: 0.85rem;
-    color: var(--text-muted);
 }
 
-.curve-control input[type="range"] {
-    accent-color: var(--copper);
+    .curve-control input[type="range"] {
+        accent-color: var(--app-accent);
+    }
+
+/* ---------- Basis-Buttons ---------- */
+
+button {
+    padding: 8px 14px;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-sm);
+    color: var(--app-text);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.08s;
 }
+
+    button:hover {
+        border-color: var(--app-accent);
+        color: var(--app-accent);
+    }
+
+    button:active {
+        transform: translateY(1px);
+    }
+
+    button.primary {
+        background: var(--app-accent);
+        border-color: var(--app-accent);
+        color: white;
+    }
+
+        button.primary:hover {
+            background: var(--app-accent-hover);
+            border-color: var(--app-accent-hover);
+            color: white;
+        }
+
+    button.danger {
+        border-color: transparent;
+        color: var(--app-danger);
+    }
+
+        button.danger:hover {
+            background: var(--app-danger-soft);
+            border-color: var(--app-danger);
+        }
 
 /* ---------- Canvas ---------- */
 
 .canvas-frame {
-    border-radius: var(--radius-md);
     overflow: hidden;
-    box-shadow: var(--shadow-card);
-    border: 1px solid var(--ink-deep);
     margin-bottom: 20px;
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-md);
+    box-shadow: var(--app-shadow);
     cursor: grab;
 }
 
-.canvas-frame:active {
-    cursor: grabbing;
-}
+    .canvas-frame:active {
+        cursor: grabbing;
+    }
 
-.canvas-frame svg {
-    display: block;
-    background-color: var(--ink-deep);
-    background-image:
-        linear-gradient(var(--grid-line) 1px, transparent 1px),
-        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-    background-size: 40px 40px;
-}
+    .canvas-frame svg {
+        display: block;
+        background-color: var(--app-accent-soft);
+        background-image: linear-gradient(rgba(47, 93, 138, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(47, 93, 138, 0.08) 1px, transparent 1px);
+        background-size: 24px 24px;
+    }
 
-/* Node card */
+/* ---------- Nodes ---------- */
+
 .node-rect {
-    fill: var(--paper);
-    stroke: var(--ink-deep);
+    fill: var(--app-surface);
+    stroke: rgba(47, 93, 138, 0.35);
     stroke-width: 1.5;
-    transition: stroke 0.12s ease;
+    filter: drop-shadow(0 1px 2px rgba(15, 40, 71, 0.12));
+    transition: stroke 0.15s;
 }
 
-.node-rect:hover {
-    stroke: var(--copper);
-}
+    .node-rect:hover {
+        stroke: var(--app-accent);
+    }
 
-.node-rect.is-pinned {
-    stroke: var(--copper-dark);
-    stroke-width: 2;
-}
+    .node-rect.is-pinned {
+        stroke: var(--app-accent);
+        stroke-width: 2;
+        stroke-dasharray: 5 3;
+    }
 
 .node-label {
+    color: var(--app-text);
     font-size: 13px;
-    color: var(--text-primary);
     font-weight: 500;
 }
 
 .pin-icon {
-    fill: var(--copper-dark);
+    fill: var(--app-accent);
     pointer-events: none;
 }
 
 .node-input {
+    box-sizing: border-box;
     width: 100%;
     height: 100%;
-    border: none;
-    outline: 2px solid var(--copper);
-    outline-offset: -2px;
-    font-size: 13px;
-    font-family: inherit;
     padding: 0 6px;
-    box-sizing: border-box;
-    background: #fff;
+    background: var(--app-surface);
+    border: none;
+    outline: 2px solid var(--app-accent);
+    outline-offset: -2px;
+    font-family: inherit;
+    font-size: 13px;
 }
 
 .edge-line {
-    stroke: rgba(244, 241, 234, 0.55);
-    stroke-width: 1.5;
     fill: none;
+    stroke: rgba(47, 93, 138, 0.45);
+    stroke-width: 1.5;
 }
 
-/* ---------- Context menu ---------- */
+/* ---------- Node-Kontextmenü im Canvas ---------- */
 
 .context-menu {
-    background: #fff;
-    border: 1px solid var(--paper-edge);
-    border-radius: var(--radius-md);
-    box-shadow: 0 8px 24px rgba(15, 40, 71, 0.18);
-    padding: 6px;
-    min-width: 180px;
     overflow: hidden;
+    min-width: 180px;
+    padding: 6px;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-md);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.15);
 }
 
-.context-menu > div {
-    padding: 9px 12px;
-    font-size: 0.85rem;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    color: var(--text-primary);
-}
+    .context-menu > div {
+        padding: 8px 12px;
+        border-radius: var(--app-radius-sm);
+        color: var(--app-text);
+        font-size: 0.9rem;
+        cursor: pointer;
+    }
 
-.context-menu > div:hover {
-    background: #f4f1ea;
-    color: var(--copper-dark);
-}
+        .context-menu > div:hover {
+            background: var(--app-accent-soft);
+            color: var(--app-accent);
+        }
 
-.context-menu .menu-danger {
-    color: var(--danger);
-}
+    .context-menu .menu-danger {
+        color: var(--app-danger);
+    }
 
-.context-menu .menu-danger:hover {
-    background: rgba(179, 73, 47, 0.08);
-}
+        .context-menu .menu-danger:hover {
+            background: var(--app-danger-soft);
+            color: var(--app-danger);
+        }
 
-/* ---------- Data table ---------- */
+/* ---------- Tabelle (Debug-Seite) ---------- */
 
 .node-table-wrap {
-    background: #fff;
-    border: 1px solid var(--paper-edge);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-card);
     overflow: hidden;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-md);
+    box-shadow: var(--app-shadow);
 }
 
-.node-table-wrap h2 {
-    font-size: 0.8rem;
-    text-transform: none;
-    letter-spacing: 0.02em;
-    color: var(--text-muted);
-    margin: 0;
-    padding: 14px 16px 0;
-}
+    .node-table-wrap h2 {
+        margin: 0;
+        padding: 14px 16px 0;
+        color: var(--app-text-muted);
+        font-size: 0.8rem;
+    }
 
 table {
     width: 100%;
@@ -251,73 +242,86 @@ table {
 }
 
 thead th {
-    text-align: left;
-    font-weight: 600;
-    color: var(--text-muted);
     padding: 10px 14px;
-    border-bottom: 1px solid var(--paper-edge);
+    border-bottom: 1px solid var(--app-border);
+    color: var(--app-text-muted);
     font-size: 0.75rem;
+    font-weight: 600;
+    text-align: left;
 }
 
 tbody td {
     padding: 9px 14px;
-    border-bottom: 1px solid #f0ede4;
-    color: var(--text-primary);
-    font-family: "Cascadia Mono", "SF Mono", Consolas, monospace;
+    border-bottom: 1px solid var(--app-border);
+    color: var(--app-text);
+    font-family: "Cascadia Mono", Consolas, monospace;
     font-size: 0.78rem;
 }
 
-tbody td:first-child,
-tbody td:nth-child(2) {
-    font-family: inherit;
-    font-size: 0.82rem;
-}
+    tbody td:first-child,
+    tbody td:nth-child(2) {
+        font-family: inherit;
+        font-size: 0.82rem;
+    }
 
 tbody tr:hover td {
-    background: #faf8f3;
+    background: var(--app-accent-soft);
 }
 
 tbody tr:last-child td {
     border-bottom: none;
 }
 
-
-/* ---------- NewMapDialog ---------- */
+/* ---------- Dialoge ---------- */
 
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(15, 40, 71, 0.5);
-    z-index: 2000;
+    z-index: 3000;
+    background: rgba(31, 41, 51, 0.45);
 }
 
 .modal-box {
     position: fixed;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
-    background: #fff;
-    border-radius: var(--radius-md);
+    z-index: 3001;
+    width: 340px;
     padding: 24px;
-    box-shadow: 0 8px 24px rgba(15, 40, 71, 0.25);
-    z-index: 2001;
-    width: 320px;
+    background: var(--app-surface);
+    border-radius: var(--app-radius-md);
+    box-shadow: 0 16px 40px rgba(15, 40, 71, 0.25);
+    transform: translate(-50%, -50%);
 }
+
+    .modal-box h3 {
+        margin: 0 0 4px;
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
 
     .modal-box label {
         display: block;
-        margin-top: 12px;
-        margin-bottom: 4px;
+        margin: 12px 0 4px;
+        color: var(--app-text-muted);
         font-size: 0.8rem;
-        color: var(--text-muted);
     }
 
     .modal-box input {
+        box-sizing: border-box;
         width: 100%;
-        padding: 8px;
-        border: 1px solid var(--paper-edge);
-        border-radius: var(--radius-sm);
+        padding: 9px 10px;
+        border: 1px solid var(--app-border);
+        border-radius: var(--app-radius-sm);
+        font-family: inherit;
+        transition: border-color 0.15s, box-shadow 0.15s;
     }
+
+        .modal-box input:focus {
+            outline: none;
+            border-color: var(--app-accent);
+            box-shadow: 0 0 0 3px var(--app-accent-soft);
+        }
 
 .modal-actions {
     display: flex;
