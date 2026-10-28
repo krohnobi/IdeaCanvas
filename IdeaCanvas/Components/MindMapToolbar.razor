@@ -23,7 +23,7 @@
             </div>
 
             <div class="editor-divider"></div>
-
+            <button class="editor-button secondary" @onclick="OnOpenColorsClicked">🎨 Farben</button>
             <button class="editor-button secondary" @onclick="OnUnpinAllClicked">📌 Pins lösen</button>
             <button class="editor-button secondary" @onclick="OnResetZoomClicked">🎯 Zentrieren</button>
 
@@ -47,6 +47,7 @@
     [Parameter] public EventCallback OnExportPdf { get; set; }
     [Parameter] public EventCallback OnUnpinAll { get; set; }
     [Parameter] public EventCallback OnResetZoom { get; set; }
+    [Parameter] public EventCallback OnOpenColors { get; set; }
 
     private Task OnNewMapRequested() => OnCreate.InvokeAsync();
     private Task OnSaveClicked() => OnSave.InvokeAsync();
@@ -54,6 +55,8 @@
     private Task OnExportPdfClicked() => OnExportPdf.InvokeAsync();
     private Task OnUnpinAllClicked() => OnUnpinAll.InvokeAsync();
     private Task OnResetZoomClicked() => OnResetZoom.InvokeAsync();
+    private async Task OnOpenColorsClicked() => await OnOpenColors.InvokeAsync();
+
 
     private Task OnCurveStrengthChanged(ChangeEventArgs e)
     {

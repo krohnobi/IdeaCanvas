@@ -9,6 +9,7 @@
         public DateTime ModifiedAt { get; set; } = DateTime.Now;
         public List<MindMapNode> Nodes { get; set; } = new();
         public List<EdgeLayout> Edges { get; set; } = new();
+        public Dictionary<int, string> LevelColors { get; set; } = new();
         #endregion
     }
 }

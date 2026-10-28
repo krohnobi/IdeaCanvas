@@ -329,3 +329,15 @@ tbody tr:last-child td {
     gap: 8px;
     margin-top: 20px;
 }
+
+/* ---------- PDF-Export: Pins und Strichellinien ausblenden ---------- */
+
+.is-exporting .pin-icon {
+    display: none;
+}
+
+.is-exporting .node-rect.is-pinned {
+    stroke: rgba(47, 93, 138, 0.35);
+    stroke-width: 1.5;
+    stroke-dasharray: none;
+}

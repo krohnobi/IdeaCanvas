@@ -196,5 +196,145 @@ namespace IdeaCanvas.Services
             return result;
         }
 
+
+        #region Level Color functions
+
+        public int GetExistingLevels(MindMap map)
+        {
+            if (map.Nodes.Count == 0)
+            {
+                return 0;
+            }
+
+            return map.Nodes.Max(node => node.Generation);
+        }
+        public bool SetLevelColor(MindMap map, int level, string hexColor)
+        {
+            bool isValidLevel = level >= 0;
+            bool isValidColor = hexColor.StartsWith("#") && hexColor.Length == 7;
+
+            if (!isValidLevel || !isValidColor)
+            {
+                return false;
+            }
+
+            map.LevelColors[level] = hexColor;
+            return true;
+        }
+
+        public string? GetLevelColor(MindMap map, int level)
+        {
+            bool isValidLevel = level >= 0;
+            if (!isValidLevel)
+            {
+                return null;
+            }
+
+            map.LevelColors.TryGetValue(level, out string? existingColor);
+            return existingColor;
+        }
+
+        public string GetTextColorForLevel(MindMap map, int level)
+        {
+            bool isValidLevel = level >= 0;
+            if (!isValidLevel)
+            {
+                return DarkTextColor;
+            }
+
+            string? backgroundColor=GetLevelColor(map, level);
+            if(backgroundColor != null)
+            {
+                return GetContrastTextColor(backgroundColor);
+            }
+            return DarkTextColor;
+        }
+
+        public bool RemoveLevelColor(MindMap map, int level)
+        {
+            bool isValidLevel = level >= 0;
+            if (!isValidLevel)
+            {
+                return false;
+            }
+            return map.LevelColors.Remove(level);
+        }
+
+        public void ResetLevelColor(MindMap map)
+        {
+            map.LevelColors.Clear();
+        }
+
+
+
+        #region WCAG Text-Color ratio functions
+
+        private const string DarkTextColor = "#1f2933";
+        private const string LightTextColor = "#ffffff";
+
+        // Wählt die Schriftfarbe, die sich am stärksten vom Hintergrund abhebt
+        private string GetContrastTextColor(string backgroundColor)
+        {
+            double backgroundLuminance = GetRelativeLuminance(backgroundColor);
+            double darkTextLuminance = GetRelativeLuminance(DarkTextColor);
+            double lightTextLuminance = GetRelativeLuminance(LightTextColor);
+
+            double contrastWithDarkText = GetContrastRatio(backgroundLuminance, darkTextLuminance);
+            double contrastWithLightText = GetContrastRatio(backgroundLuminance, lightTextLuminance);
+
+            if (contrastWithDarkText >= contrastWithLightText)
+            {
+                return DarkTextColor;
+            }
+
+            return LightTextColor;
+        }
+
+        // Helligkeit einer Farbe von 0 (Schwarz) bis 1 (Weiß), so wie das Auge sie wahrnimmt
+        private double GetRelativeLuminance(string hexColor)
+        {
+            string hexDigits = hexColor.TrimStart('#');
+
+            int red = Convert.ToInt32(hexDigits.Substring(0, 2), 16);
+            int green = Convert.ToInt32(hexDigits.Substring(2, 2), 16);
+            int blue = Convert.ToInt32(hexDigits.Substring(4, 2), 16);
+
+            double linearRed = ToLinear(red);
+            double linearGreen = ToLinear(green);
+            double linearBlue = ToLinear(blue);
+
+            double luminance = 0.2126 * linearRed + 0.7152 * linearGreen + 0.0722 * linearBlue;
+            return luminance;
+        }
+
+        // Rechnet einen Farbanteil (0–255) in echte Lichtstärke (0–1) um
+        private double ToLinear(int colorChannel)
+        {
+            double channelRatio = colorChannel / 255.0;
+
+            if (channelRatio <= 0.04045)
+            {
+                return channelRatio / 12.92;
+            }
+
+            double linearValue = Math.Pow((channelRatio + 0.055) / 1.055, 2.4);
+            return linearValue;
+        }
+
+        // Wie stark sich zwei Helligkeiten voneinander abheben, von 1 bis 21
+        private double GetContrastRatio(double firstLuminance, double secondLuminance)
+        {
+            double lighter = Math.Max(firstLuminance, secondLuminance);
+            double darker = Math.Min(firstLuminance, secondLuminance);
+
+            double contrastRatio = (lighter + 0.05) / (darker + 0.05);
+            return contrastRatio;
+        }
+        #endregion
+
+
+
+        #endregion
+
     }
 }

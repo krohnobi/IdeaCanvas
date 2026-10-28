@@ -7,17 +7,32 @@
 @inject IMindMapStorageService StorageService
 @inject NavigationManager Navigation
 
-<MindMapToolbar Map="currentMap"
-                CurveStrength="curveStrength"
-                CurveStrengthChanged="OnCurveStrengthChanged"
-                OnCreate="CreateMap"
-                OnBackToOverview="BackToOverview"
-                OnSave="SaveMap"
-                OnExportPdf="HandleExportRequested"
-                OnUnpinAll="HandleUnpinAllRequested"
-                OnResetZoom="HandleZoomResetRequested" />
+<div class="editor-page">
+    <MindMapToolbar Map="currentMap"
+                    CurveStrength="curveStrength"
+                    CurveStrengthChanged="OnCurveStrengthChanged"
+                    OnCreate="CreateMap"
+                    OnBackToOverview="BackToOverview"
+                    OnSave="SaveMap"
+                    OnExportPdf="HandleExportRequested"
+                    OnUnpinAll="HandleUnpinAllRequested"
+                    OnResetZoom="HandleZoomResetRequested"
+                    OnOpenColors="OpenColorPanel"/>
 
-<MindMapCanvas @ref="canvasRef" Map="currentMap" CurveStrength="curveStrength" />
+    <div class="editor-canvas-area">
+        <MindMapCanvas @ref="canvasRef" Map="currentMap" CurveStrength="curveStrength" />
+    </div>
+    @if (currentMap != null)
+{
+    <LevelColorPanel @bind-Visible="showColorPanel"
+                     LevelColors="currentMap.LevelColors"
+                     MaxLevel="@MindMapService.GetExistingLevels(currentMap)"
+                     OnColorChanged="HandleColorChanged"
+                     OnColorRemoved="HandleColorRemoved"
+                     OnReset="HandleColorsReset" />
+}
+</div>
+
 <NewMapDialog @bind-Visible="showNewMapDialog" OnConfirm="HandleNewMapConfirmed" />
 
 
@@ -155,4 +170,42 @@
         }
 
     }
+
+    
+    private bool showColorPanel;
+
+private void OpenColorPanel()
+{
+    showColorPanel = true;
+}
+
+private void HandleColorChanged((int Level, string Color) change)
+{
+    if (currentMap == null)
+    {
+        return;
+    }
+
+    MindMapService.SetLevelColor(currentMap, change.Level, change.Color);
+}
+
+private void HandleColorRemoved(int level)
+{
+    if (currentMap == null)
+    {
+        return;
+    }
+
+    MindMapService.RemoveLevelColor(currentMap, level);
+}
+
+private void HandleColorsReset()
+{
+    if (currentMap == null)
+    {
+        return;
+    }
+
+    MindMapService.ResetLevelColor(currentMap);
+}
 }

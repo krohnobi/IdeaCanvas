@@ -97,3 +97,184 @@
         width: 110px;
         accent-color: var(--app-accent);
     }
+
+/* ---------- Seitenlayout ---------- */
+
+.editor-page {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.editor-canvas-area {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+    .editor-canvas-area .canvas-frame {
+        display: flex;
+        flex: 1;
+        min-width: 0;
+        margin: 0;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+        .editor-canvas-area .canvas-frame svg {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            min-width: 0;
+        }
+
+/* ==============================
+   Farb-Panel
+   ============================== */
+
+.color-panel {
+    position: fixed;
+    top: 70px;
+    right: 16px;
+    z-index: 1500;
+    width: 300px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-md);
+    box-shadow: 0 12px 32px rgba(15, 40, 71, 0.18);
+    font-family: var(--app-font);
+    color: var(--app-text);
+}
+
+/* ---------- Kopf ---------- */
+
+.color-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--app-border);
+}
+
+    .color-panel-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+.color-panel .color-panel-close {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: var(--app-radius-sm);
+    background: none;
+    color: var(--app-text-muted);
+    font-size: 0.95rem;
+}
+
+    .color-panel .color-panel-close:hover {
+        background: var(--app-accent-soft);
+        color: var(--app-accent);
+    }
+
+/* ---------- Zeilen ---------- */
+
+.level-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--app-border);
+    transition: background-color 0.15s;
+}
+
+    .level-row:hover {
+        background: var(--app-background);
+    }
+
+.level-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.level-hex {
+    width: 62px;
+    color: var(--app-text-muted);
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: 0.78rem;
+}
+
+/* ---------- Farbwähler ---------- */
+
+.level-row input[type="color"] {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 2px solid var(--app-border);
+    border-radius: 50%;
+    background: none;
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+    .level-row input[type="color"]::-webkit-color-swatch-wrapper {
+        padding: 0;
+    }
+
+    .level-row input[type="color"]::-webkit-color-swatch {
+        border: none;
+        border-radius: 50%;
+    }
+
+    .level-row input[type="color"]:hover {
+        border-color: var(--app-accent);
+        transform: scale(1.1);
+    }
+
+/* ---------- Zurücksetzen pro Ebene ---------- */
+
+.color-panel .level-reset {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: var(--app-radius-sm);
+    background: none;
+    color: var(--app-text-muted);
+    font-size: 1rem;
+}
+
+    .color-panel .level-reset:hover {
+        background: var(--app-accent-soft);
+        color: var(--app-accent);
+    }
+
+/* Platzhalter, damit Zeilen ohne Button gleich breit bleiben */
+.level-reset-placeholder {
+    flex-shrink: 0;
+    width: 28px;
+}
+
+/* ---------- Fuß ---------- */
+
+.color-panel-footer {
+    padding: 12px 16px;
+}
+
+.color-panel .color-panel-footer button {
+    width: 100%;
+}

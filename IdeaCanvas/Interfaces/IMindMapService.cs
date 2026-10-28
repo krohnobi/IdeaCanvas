@@ -4,13 +4,19 @@ namespace IdeaCanvas.Interfaces
 {
     interface IMindMapService
     {
-        public MindMapNode AddNode(MindMap map, Guid? parentId, string text);
-        public bool RemoveNode(MindMap map, Guid nodeId);
-        public bool MoveNode(MindMap map, Guid nodeId, Guid newParentId, int newSortOrder);
-        public void ReorderSiblings(MindMap map, Guid? parentId, IEnumerable<Guid> orderedNodeIds);
-        public void UpdateText(MindMap map, Guid nodeId, string text);
-        public void UpdateDescription(MindMap map, Guid nodeId, string description);
-        public void UnpinNode(MindMap map, Guid nodeId);
-        public void UnpinAllNodes(MindMap map);
+        MindMapNode AddNode(MindMap map, Guid? parentId, string text);
+        bool RemoveNode(MindMap map, Guid nodeId);
+        bool MoveNode(MindMap map, Guid nodeId, Guid newParentId, int newSortOrder);
+        void ReorderSiblings(MindMap map, Guid? parentId, IEnumerable<Guid> orderedNodeIds);
+        void UpdateText(MindMap map, Guid nodeId, string text);
+        void UpdateDescription(MindMap map, Guid nodeId, string description);
+        void UnpinNode(MindMap map, Guid nodeId);
+        void UnpinAllNodes(MindMap map);
+        int GetExistingLevels(MindMap map);
+        bool SetLevelColor(MindMap map, int level, string hexColor);
+        string? GetLevelColor(MindMap map, int level);
+        string GetTextColorForLevel(MindMap map, int level);
+        public bool RemoveLevelColor(MindMap map, int level);
+        public void ResetLevelColor(MindMap map);
     }
 }

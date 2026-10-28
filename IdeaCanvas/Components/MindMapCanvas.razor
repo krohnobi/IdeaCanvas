@@ -4,6 +4,8 @@
 @using IdeaCanvas.Interfaces
 @using IdeaCanvas.Models
 
+@implements IAsyncDisposable
+
 @inject IJSRuntime JS
 @inject IMindMapService MindMapService
 @inject ILayoutService LayoutService
@@ -29,13 +31,15 @@
              @onwheel="OnSvgWheel" @onwheel:preventDefault="true"
              @onmousemove="OnSvgMouseMove" @onmouseup="OnSvgMouseUp"
              @onmousedown="OnSvgMouseDown"
-             width="@CanvasWidth.ToString(CultureInfo.InvariantCulture)"
-             height="@CanvasHeight.ToString(CultureInfo.InvariantCulture)">
+             width="@canvasWidth.ToString(CultureInfo.InvariantCulture)"
+             height="@canvasHeight.ToString(CultureInfo.InvariantCulture)">
 
-            <g transform="@($"translate({(CanvasWidth / 2).ToString(CultureInfo.InvariantCulture)}, {(CanvasHeight / 2).ToString(CultureInfo.InvariantCulture)})")">
+            <g>
                 @foreach (var node in Map.Nodes)
                 {
-                    <rect class="node-rect @(node.Layout.IsPinned ? "is-pinned" : "")"
+
+                    <rect class="node-rect @(node.Layout.IsPinned ? "is-pinned" : "" )"
+                    style="@GetNodeStyle(node)"
                           @oncontextmenu="(MouseEventArgs e) => OnNodeRightClick(e, node)"
                           @oncontextmenu:preventDefault="true"
                           @onmousedown="(e) => OnNodeMouseDown(e, node)"
@@ -74,7 +78,7 @@
                         }
                         else
                         {
-                            <div class="node-label" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; pointer-events: none;">
+                            <div class="node-label" style="color: @GetNodeTextColor(node); width:100%; height:100%; display:flex; align-items:center; justify-content:center; pointer-events: none;">
                                 @node.Text
                             </div>
                         }
@@ -118,10 +122,17 @@
 }
 
 @code {
-    // Feste Canvas-Größe in Pixeln - Referenzwert für alle Maus-/Zoom-/Pan-Berechnungen.
-    // Änderst du diese, ziehen viewBox-Start, Zoom und Drag automatisch mit.
-    private const double CanvasWidth = 1400;
-    private const double CanvasHeight = 800;
+
+    // Startgröße, bis der Browser die echte Größe meldet
+    private const double DefaultCanvasWidth = 1400;
+    private const double DefaultCanvasHeight = 800;
+
+    // Echte Größe des SVG in Pixeln, wird bei jeder Größenänderung aktualisiert
+    private double canvasWidth = DefaultCanvasWidth;
+    private double canvasHeight = DefaultCanvasHeight;
+
+    private DotNetObjectReference<MindMapCanvas>? canvasReference;
+    private bool isObservingSize = false;
 
     [Parameter] public MindMap? Map { get; set; }
     [Parameter] public double CurveStrength { get; set; }
@@ -143,12 +154,14 @@
     // Das <g> verschiebt den Ursprung bereits in die Canvas-Mitte, daher ist viewBox-Start = Root-Position.
     public void CenterOnRoot()
     {
-        var root = Map?.Nodes.FirstOrDefault(n => n.ParentId == null);
+        MindMapNode? root = Map?.Nodes.FirstOrDefault(node => node.ParentId == null);
+        double rootX = root?.Layout.X ?? 0;
+        double rootY = root?.Layout.Y ?? 0;
 
-        viewBoxWidth = CanvasWidth;
-        viewBoxHeight = CanvasHeight;
-        viewBoxX = root?.Layout.X ?? 0;
-        viewBoxY = root?.Layout.Y ?? 0;
+        viewBoxWidth = canvasWidth;
+        viewBoxHeight = canvasHeight;
+        viewBoxX = rootX - canvasWidth / 2;
+        viewBoxY = rootY - canvasHeight / 2;
     }
 
     public async Task ApplyLayout()
@@ -165,7 +178,7 @@
         LayoutService.ApplyLayout(Map, CurveStrength);
 
     }
-    
+
     private async Task MeasureNode(MindMapNode node)
     {
         var size = await JS.InvokeAsync<TextSize>(
@@ -190,14 +203,70 @@
     private bool shouldFocusEditInput = false;
     private ElementReference? editInputRef;
 
+
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        bool canvasIsVisible = Map != null;
+
+        if (canvasIsVisible && !isObservingSize)
+        {
+            isObservingSize = true;
+            canvasReference = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("ideaCanvas.observeSize", "CanvasSvgData", canvasReference);
+        }
+
         if (shouldFocusEditInput && editInputRef != null)
         {
-            shouldFocusEditInput = false; // sofort zurücksetzen, damit's nur EINMAL passiert
-            await JS.InvokeVoidAsync("ideaCanvas.focusElement", editInputRef);
+            if (shouldFocusEditInput && editInputRef != null)
+            {
+                shouldFocusEditInput = false; // sofort zurücksetzen, damit's nur EINMAL passiert
+                await JS.InvokeVoidAsync("ideaCanvas.focusElement", editInputRef);
+            }
         }
     }
+
+    [JSInvokable]
+    public async Task OnCanvasResized(double width, double height)
+    {
+        if (width <= 0 || height <= 0)
+        {
+            return;
+        }
+
+        // Zoom und Mittelpunkt merken, damit die Ansicht beim Vergrößern nicht springt
+        double zoom = viewBoxWidth / canvasWidth;
+        double centerX = viewBoxX + viewBoxWidth / 2;
+        double centerY = viewBoxY + viewBoxHeight / 2;
+
+        canvasWidth = width;
+        canvasHeight = height;
+
+        viewBoxWidth = canvasWidth * zoom;
+        viewBoxHeight = canvasHeight * zoom;
+        viewBoxX = centerX - viewBoxWidth / 2;
+        viewBoxY = centerY - viewBoxHeight / 2;
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (isObservingSize)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("ideaCanvas.stopObservingSize", "CanvasSvgData");
+            }
+            catch (JSDisconnectedException)
+            {
+                // Die Seite ist schon weg, dann gibt es nichts mehr aufzuräumen
+            }
+        }
+
+        canvasReference?.Dispose();
+    }
+
     #endregion
 
     private void OnNodeRightClick(MouseEventArgs e, MindMapNode node)
@@ -282,7 +351,7 @@
     #endregion
 
 
-    
+
     #region Move & Pin
     private Guid? draggingNodeId;
     private double? lastMouseX, lastMouseY;
@@ -307,7 +376,7 @@
 
     private async Task OnSvgMouseMove(MouseEventArgs e)
     {
-        double scale = viewBoxWidth / CanvasWidth;
+        double scale = viewBoxWidth / canvasWidth;
 
         if (isPanning && panStartX != null && panStartY != null)
         {
@@ -381,8 +450,8 @@
     #region Pan & Zoom
     private bool hasDraggedMoved = false;
 
-    private double viewBoxX = -CanvasWidth / 2, viewBoxY = -CanvasHeight / 2;
-    private double viewBoxWidth = CanvasWidth, viewBoxHeight = CanvasHeight;
+    private double viewBoxX = -DefaultCanvasWidth / 2, viewBoxY = -DefaultCanvasHeight / 2;
+    private double viewBoxWidth = DefaultCanvasWidth, viewBoxHeight = DefaultCanvasHeight;
 
     private bool isPanning = false;
     private double? panStartX, panStartY;
@@ -393,8 +462,8 @@
     {
         double zoomFactor = e.DeltaY < 0 ? 0.9 : 1.1;
 
-        double mouseXRatio = e.OffsetX / CanvasWidth;
-        double mouseYRatio = e.OffsetY / CanvasHeight;
+        double mouseXRatio = e.OffsetX / canvasWidth;
+        double mouseYRatio = e.OffsetY / canvasHeight;
 
         double newWidth = viewBoxWidth * zoomFactor;
         double newHeight = viewBoxHeight * zoomFactor;
@@ -474,5 +543,35 @@
         return fullPath;
     }
 
+    #endregion
+
+
+
+    #region LevelColor functions
+    private string GetNodeStyle(MindMapNode node)
+    {
+        if (Map == null)
+        {
+            return "";
+        }
+        string? color = MindMapService.GetLevelColor(Map, node.Generation);
+
+        if (!string.IsNullOrEmpty(color))
+        {
+            return $"fill: {color};";
+        }
+        return "";
+    }
+
+    private string GetNodeTextColor(MindMapNode node)
+    {
+        if (Map == null)
+        {
+            return "";
+        }
+
+        string textColor = MindMapService.GetTextColorForLevel(Map, node.Generation);
+        return textColor;
+    }
     #endregion
 }

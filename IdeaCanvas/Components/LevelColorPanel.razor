@@ -1,0 +1,105 @@
+@if (Visible)
+{
+    <div class="color-panel">
+
+        <div class="color-panel-header">
+            <h3>🎨 Farben der Ebenen</h3>
+            <button class="color-panel-close" title="Schließen" @onclick="Close">✕</button>
+        </div>
+
+        @foreach (int level in Enumerable.Range(0, MaxLevel + 1))
+        {
+            <div class="level-row">
+                <span class="level-name">@GetLevelName(level)</span>
+
+                <input type="color"
+                       title="Farbe wählen"
+                       value="@GetDisplayColor(level)"
+                       @oninput="(e) => ChangeColorAsync(level, e)" />
+                <span class="level-hex">@GetDisplayColor(level)</span>
+                @if (LevelColors.ContainsKey(level))
+{
+    <button class="level-reset" title="Zurücksetzen" @onclick="() => RemoveColorAsync(level)">↺</button>
+}
+else
+{
+    <span class="level-reset-placeholder"></span>
+}
+            </div>
+        }
+
+        <div class="color-panel-footer">
+            <button @onclick="ResetAllAsync">Alle zurücksetzen</button>
+        </div>
+
+    </div>
+}
+
+@code {
+    private const string DefaultColor = "#ffffff";
+
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+
+    [Parameter] public Dictionary<int, string> LevelColors { get; set; } = new();
+    [Parameter] public int MaxLevel { get; set; }
+
+    [Parameter] public EventCallback<(int Level, string Color)> OnColorChanged { get; set; }
+    [Parameter] public EventCallback<int> OnColorRemoved { get; set; }
+    [Parameter] public EventCallback OnReset { get; set; }
+
+    // Name der Ebene für die Anzeige
+    private string GetLevelName(int level)
+    {
+        if (level == 0)
+        {
+            return "Ebene 0 · Hauptthema";
+        }
+
+        return $"Ebene {level}";
+    }
+
+    // Hinterlegte Farbe oder Weiß, weil der Farbwähler immer einen Wert braucht
+    private string GetDisplayColor(int level)
+    {
+        bool hasColor = LevelColors.TryGetValue(level, out string? color);
+
+        if (hasColor && color != null)
+        {
+            return color;
+        }
+
+        return DefaultColor;
+    }
+
+    // Wird beim Ziehen im Farbwähler aufgerufen
+    private async Task ChangeColorAsync(int level, ChangeEventArgs e)
+    {
+        string? selectedColor = e.Value?.ToString();
+
+        if (string.IsNullOrEmpty(selectedColor))
+        {
+            return;
+        }
+
+        await OnColorChanged.InvokeAsync((level, selectedColor));
+    }
+
+    // Eine Ebene wieder auf Weiß setzen
+    private async Task RemoveColorAsync(int level)
+    {
+        await OnColorRemoved.InvokeAsync(level);
+    }
+
+    // Alle Ebenen wieder auf Weiß setzen
+    private async Task ResetAllAsync()
+    {
+        await OnReset.InvokeAsync();
+    }
+
+    private async Task Close()
+    {
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+}
